@@ -69,7 +69,7 @@ jobs:
       # provenance of its own binaries. The attestation lets a self-hoster confirm that the image
       # they pulled was built from this commit, by this workflow, and not by someone else.
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ steps.image.outputs.name }}
           subject-digest: ${{ steps.build.outputs.digest }}
