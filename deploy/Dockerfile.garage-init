@@ -3,9 +3,9 @@
 # The Garage image is distroless and has no shell, so the bootstrap script cannot run in it. This
 # copies the pinned Garage binary onto a minimal Alpine base purely so that `sh` is available.
 # The version is pinned in one place, here, and must match the garage service in docker-compose.yml.
-FROM dxflrs/garage:v2.1.0 AS garage
+FROM dxflrs/garage:v2.3.0 AS garage
 
-FROM alpine:3.22
+FROM alpine:3.24
 COPY --from=garage /garage /usr/local/bin/garage
 COPY garage-init.sh /init/garage-init.sh
 ENTRYPOINT ["/bin/sh", "/init/garage-init.sh"]
