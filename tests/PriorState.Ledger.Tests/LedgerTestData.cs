@@ -47,12 +47,63 @@ internal static class LedgerTestData
             Url = url,
             FinalUrl = null,
             CapturedAtUtc = new DateTimeOffset(2026, 9, 3, 14, 30, 0, TimeSpan.Zero),
-            WaczSha256 = Sha256Hash.Parse(waczHash),
-            WaczObjectKey = "projects/demo/2026/09/03/prices.wacz",
-            WaczSizeBytes = 1_048_576,
+            PayloadSha256 = Sha256Hash.Parse(waczHash),
+            PayloadObjectKey = "projects/demo/2026/09/03/prices.wacz",
+            PayloadSizeBytes = 1_048_576,
+            PayloadMediaType = "application/wacz",
+            CanonicalFormVersion = CanonicalSnapshotForm.Version1,
             CaptureProfileVersionId = Profile.Id,
             CaptureProfileVersion = Profile,
             Conditions = Conditions,
+            ChainSequence = sequence,
+            PreviousHash = previousHash ?? Sha256Hash.Genesis,
+            EntryHash = Sha256Hash.Genesis,
+            StorageWorm = WormSupport.Unsupported,
+        };
+
+        snapshot.EntryHash = CanonicalSnapshotForm.ComputeEntryHash(snapshot);
+        return snapshot;
+    }
+
+    // A fresh instance per access: one of the tests mutates the configuration to prove the
+    // entry hash moves with it, and a shared instance would leak that into its neighbours.
+    public static PluginBindingVersion Binding => new()
+    {
+        Id = Guid.Parse("0192f000-0000-7000-8000-000000000002"),
+        ProjectId = Guid.Parse("0192f000-0000-7000-8000-000000000003"),
+        PluginId = "http-json",
+        Name = "erp-prices",
+        Version = 3,
+        ConfigurationJson = """{"method":"GET","url":"https://erp.example.com/api/prices"}""",
+        SecretRef = "PS_SECRET_ERP_TOKEN",
+        Rationale = "Prices are quoted on the shop page and have to be archived with it.",
+        Required = false,
+        CreatedAt = new DateTimeOffset(2026, 9, 1, 8, 0, 0, TimeSpan.Zero),
+    };
+
+    /// <summary>A snapshot produced by a capture plugin, rendered under the v2 canonical form.</summary>
+    public static Snapshot PluginSnapshot(
+        long sequence = 1,
+        Sha256Hash? previousHash = null,
+        string url = "https://erp.example.com/api/prices")
+    {
+        var snapshot = new Snapshot
+        {
+            Id = Guid.Parse("0192f000-0000-7000-8000-00000000000b"),
+            Url = url,
+            FinalUrl = null,
+            CapturedAtUtc = new DateTimeOffset(2026, 9, 3, 14, 30, 0, TimeSpan.Zero),
+            PayloadSha256 = Sha256Hash.Parse("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"),
+            PayloadObjectKey = "projects/demo/runs/abc/plugins/http-json/prices.json",
+            PayloadSizeBytes = 2048,
+            PayloadMediaType = "application/json",
+            CanonicalFormVersion = CanonicalSnapshotForm.Version2,
+            CaptureProfileVersionId = Profile.Id,
+            CaptureProfileVersion = Profile,
+            Conditions = null,
+            PluginBindingVersionId = Binding.Id,
+            PluginBindingVersion = Binding,
+            PluginVersion = "1.4.2",
             ChainSequence = sequence,
             PreviousHash = previousHash ?? Sha256Hash.Genesis,
             EntryHash = Sha256Hash.Genesis,

@@ -6,6 +6,9 @@
     <Project Path="src/PriorState.Domain/PriorState.Domain.csproj" />
     <Project Path="src/PriorState.Evidence/PriorState.Evidence.csproj" />
     <Project Path="src/PriorState.Ledger/PriorState.Ledger.csproj" />
+    <Project Path="src/PriorState.Plugins/PriorState.Plugins.csproj" />
+    <Project Path="src/PriorState.Plugins.Abstractions/PriorState.Plugins.Abstractions.csproj" />
+    <Project Path="src/PriorState.Plugins.HttpJson/PriorState.Plugins.HttpJson.csproj" />
     <Project Path="src/PriorState.Storage/PriorState.Storage.csproj" />
     <Project Path="src/PriorState.Worker/PriorState.Worker.csproj" />
   </Folder>
@@ -13,6 +16,7 @@
     <Project Path="tests/PriorState.Data.Tests/PriorState.Data.Tests.csproj" />
     <Project Path="tests/PriorState.Evidence.Tests/PriorState.Evidence.Tests.csproj" />
     <Project Path="tests/PriorState.Ledger.Tests/PriorState.Ledger.Tests.csproj" />
+    <Project Path="tests/PriorState.Plugins.Tests/PriorState.Plugins.Tests.csproj" />
     <Project Path="tests/PriorState.Storage.Tests/PriorState.Storage.Tests.csproj" />
   </Folder>
 </Solution>

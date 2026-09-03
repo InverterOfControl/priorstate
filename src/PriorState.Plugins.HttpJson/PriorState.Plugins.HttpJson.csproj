@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PriorState.Domain\PriorState.Domain.csproj" />
+    <ProjectReference Include="..\PriorState.Plugins.Abstractions\PriorState.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+</Project>

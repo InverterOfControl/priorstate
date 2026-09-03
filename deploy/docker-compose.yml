@@ -152,6 +152,16 @@ services:
       CRAWLER__WORKERS: ${CRAWLER_WORKERS:-2}
       CRAWLER__PAGELIMIT: ${CRAWLER_PAGE_LIMIT:-500}
       CRAWLER__DELAYBETWEENPAGESSECONDS: ${CRAWLER_DELAY_SECONDS:-1}
+      # Capture plugins. The allowlist is comma-separated in .env and expanded into the indexed
+      # form the configuration binder expects; leaving it empty lets a binding reach any host this
+      # container can, which matters because this container also holds the Docker socket.
+      PLUGINS__HTTPJSON__ALLOWEDHOSTS__0: ${PLUGIN_HTTP_ALLOWED_HOST_0:-}
+      PLUGINS__HTTPJSON__ALLOWEDHOSTS__1: ${PLUGIN_HTTP_ALLOWED_HOST_1:-}
+      PLUGINS__HTTPJSON__ALLOWEDHOSTS__2: ${PLUGIN_HTTP_ALLOWED_HOST_2:-}
+      PLUGINS__HTTPJSON__MAXPAYLOADBYTES: ${PLUGIN_MAX_PAYLOAD_BYTES:-33554432}
+      # Secrets a plugin binding may reference by name. The name is recorded in the ledger and the
+      # evidence package; the value stays here and is never written to the database.
+      PS_SECRET_ERP_TOKEN: ${PS_SECRET_ERP_TOKEN:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${CRAWL_HOST_DIRECTORY:-/var/lib/priorstate/crawls}:/var/lib/priorstate/crawls

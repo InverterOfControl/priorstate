@@ -73,6 +73,38 @@ Konfiguration übernommen.
 behalten die Version, unter der sie aufgenommen wurden. Eine nachträgliche Änderung eines Profils
 ist technisch ausgeschlossen (Datenbank-Trigger); jede Änderung wird protokolliert.
 
+**Zusatzmodule (Erfassungsmodule):** …
+(Zutreffendes angeben — falls keine Module eingesetzt werden: „Es werden keine Zusatzmodule
+eingesetzt." Dieser Absatz kann dann entfallen.)
+
+Neben der Seitenerfassung können Zusatzmodule Daten archivieren, die auf der Seite selbst nicht
+enthalten sind — beispielsweise Preise, die von einer internen Schnittstelle abgerufen werden. Das
+Ergebnis wird als eigener Stand in derselben Hash-Kette geführt und unterliegt denselben Regeln wie
+eine Seitenerfassung.
+
+| Modul | Konfiguration (Bezeichnung, Version) | Abgerufene Schnittstelle | Projekt |
+|---|---|---|---|
+| … | … | … | … |
+
+Für Zusatzmodule gilt entsprechend:
+
+- Die Module sind fest in die eingesetzte Programmversion eingebunden. Ein Nachladen beliebigen
+  Programmcodes zur Laufzeit findet nicht statt; der ausgeführte Quelltext ist derselbe, der unter
+  der AGPL-3.0 veröffentlicht ist.
+- Ein Modul kann ausschließlich neue Einträge veranlassen. Ein Zugriff auf bereits gespeicherte
+  Einträge, auf den Objektspeicher oder auf die Hash-Kette ist ihm technisch nicht möglich.
+- **Änderungen an der Konfiguration eines Moduls** erzeugen stets eine neue Version und lösen die
+  bisherige ab. Bestehende Erfassungen behalten die Version, unter der sie aufgenommen wurden; eine
+  nachträgliche Änderung ist durch Datenbank-Trigger ausgeschlossen und wird protokolliert.
+- Der Hash der jeweils verwendeten Konfiguration ist Bestandteil des Eintrags-Hashes. Die
+  Konfiguration liegt jedem Beweispaket bei und ist damit durch Dritte nachrechenbar.
+- Zugangsdaten sind nicht Bestandteil der Konfiguration. Aufgezeichnet wird ausschließlich der Name
+  der Umgebungsvariablen, aus der sie zur Laufzeit gelesen werden.
+- Die Version eines Moduls wird zum Zeitpunkt der Ausführung aus dem ausgeführten Programmstand
+  ausgelesen; sie wird nicht aus der Konfiguration übernommen.
+
+Bescheinigt wird für solche Stände der Empfang der Daten, nicht deren inhaltliche Richtigkeit.
+
 ---
 
 ## 3. Sicherung der Unveränderbarkeit

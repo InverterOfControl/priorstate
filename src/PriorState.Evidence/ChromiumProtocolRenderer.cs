@@ -149,7 +149,6 @@ public sealed partial class ChromiumProtocolRenderer : IProtocolRenderer, IDispo
     {
         var s = request.Snapshot;
         var a = request.Anchor;
-        var c = s.Conditions;
 
         var values = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -157,24 +156,12 @@ public sealed partial class ChromiumProtocolRenderer : IProtocolRenderer, IDispo
             ["PackageId"] = packageId.ToString(),
             ["GeneratedAt"] = Ledger.CanonicalSnapshotForm.FormatTimestamp(DateTimeOffset.UtcNow),
             ["ToolVersion"] = _options.ToolVersion,
-            ["CanonicalFormVersion"] = Ledger.CanonicalSnapshotForm.Version1,
+            ["CanonicalFormVersion"] = s.CanonicalFormVersion,
             ["Url"] = s.Url,
             ["FinalUrl"] = s.FinalUrl ?? "— (keine Weiterleitung)",
             ["CapturedAtUtc"] = Ledger.CanonicalSnapshotForm.FormatTimestamp(s.CapturedAtUtc),
-            ["WaczSizeBytes"] = FormatGermanNumber(s.WaczSizeBytes),
             ["ProfileDesignation"] = s.CaptureProfileVersion?.Designation ?? "unbekannt",
-            ["UserAgent"] = c.UserAgent,
-            ["Viewport"] = $"{c.ViewportWidth} × {c.ViewportHeight}",
-            ["AuthenticatedSession"] = c.AuthenticatedSession ? "ja" : "nein",
-            ["AdBlockerActive"] = c.AdBlockerActive ? "ja" : "nein",
-            ["CookieBanner"] = c.CookieBanner == CookieBannerHandling.Dismissed
-                ? "durch den Crawler geschlossen"
-                : "unverändert wie ausgeliefert",
-            ["JavaScriptSettleMs"] = c.JavaScriptSettleMs.ToString(CultureInfo.InvariantCulture),
-            ["ChromiumVersion"] = c.ChromiumVersion,
-            ["CrawlerVersion"] = c.CrawlerVersion,
             ["ChainSequence"] = s.ChainSequence.ToString(CultureInfo.InvariantCulture),
-            ["WaczSha256"] = s.WaczSha256.Value,
             ["PreviousHash"] = s.PreviousHash.Value,
             ["EntryHash"] = s.EntryHash.Value,
             ["MerkleRoot"] = a.MerkleRoot.Value,
@@ -188,13 +175,24 @@ public sealed partial class ChromiumProtocolRenderer : IProtocolRenderer, IDispo
                 : "— (keine Speichersperre gesetzt)",
         };
 
+        // The blocks that differ between a page capture and a plugin snapshot: what the payload
+        // is, and what the record can say about how it was obtained.
+        foreach (var (key, value) in ProtocolBlocks.For(request))
+        {
+            values[key] = value;
+        }
+
         var rendered = new StringBuilder(template);
         foreach (var (key, value) in values)
         {
-            // TsaWarning is markup we generated ourselves; everything else is data and is escaped.
+            // The TSA warning and the generated blocks are markup we produced ourselves, with
+            // every interpolated value already escaped at the point it was inserted. Everything
+            // else is data and is escaped here.
             rendered.Replace(
                 "{{" + key + "}}",
-                key == "TsaWarning" ? value : WebUtility.HtmlEncode(value));
+                key == "TsaWarning" || ProtocolBlocks.GeneratedMarkupKeys.Contains(key)
+                    ? value
+                    : WebUtility.HtmlEncode(value));
         }
 
         return rendered.ToString();

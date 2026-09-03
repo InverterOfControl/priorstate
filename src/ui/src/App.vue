@@ -16,6 +16,7 @@ const nav = [
   { name: 'timeline', to: '/timeline' },
   { name: 'runs', to: '/runs' },
   { name: 'profiles', to: '/profiles' },
+  { name: 'plugins', to: '/plugins' },
   { name: 'audit', to: '/audit' },
 ] as const
 

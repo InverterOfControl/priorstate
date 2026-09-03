@@ -216,4 +216,68 @@ public sealed class AppendOnlyLedgerTests
 
         Assert.Equal(1, affected);
     }
+    // --- Plugin bindings. A snapshot's entry hash commits to the digest of the binding that
+    // produced it, so a binding that could be edited in place would let the operator change what a
+    // recorded snapshot claims to have been fetched under. Same guarantee as capture profiles.
+
+    [Fact]
+    public async Task PluginBinding_CannotBeUpdated()
+    {
+        await using var db = _postgres.CreateContext();
+        var binding = await PostgresFixture.SeedPluginBindingAsync(db);
+
+        var ex = await Assert.ThrowsAsync<PostgresException>(async () =>
+            await db.Database.ExecuteSqlAsync(
+                $"""
+                UPDATE plugin_binding_versions
+                   SET "ConfigurationJson" = 'tampered'
+                 WHERE "Id" = {binding.Id}
+                """));
+
+        Assert.Contains("append-only", ex.MessageText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PluginBinding_CannotBeDeleted()
+    {
+        await using var db = _postgres.CreateContext();
+        var binding = await PostgresFixture.SeedPluginBindingAsync(db);
+
+        var ex = await Assert.ThrowsAsync<PostgresException>(async () =>
+            await db.Database.ExecuteSqlAsync(
+                $"""DELETE FROM plugin_binding_versions WHERE "Id" = {binding.Id}"""));
+
+        Assert.Contains("append-only", ex.MessageText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PluginBindings_CannotBeTruncated()
+    {
+        await using var db = _postgres.CreateContext();
+        await PostgresFixture.SeedPluginBindingAsync(db);
+
+        await Assert.ThrowsAsync<PostgresException>(async () =>
+            await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE plugin_binding_versions CASCADE"));
+    }
+
+    [Fact]
+    public async Task PluginBinding_CanBeSupersededExactlyOnce()
+    {
+        // Retiring or replacing a binding is the one permitted change, and it can only ever be
+        // made once. Otherwise "this stopped running on the 12th" could be rewritten later.
+        await using var db = _postgres.CreateContext();
+        var binding = await PostgresFixture.SeedPluginBindingAsync(db);
+        var when = DateTimeOffset.UtcNow;
+
+        await db.Database.ExecuteSqlAsync(
+            $"""UPDATE plugin_binding_versions SET "SupersededAt" = {when} WHERE "Id" = {binding.Id}""");
+
+        await Assert.ThrowsAsync<PostgresException>(async () =>
+            await db.Database.ExecuteSqlAsync(
+                $"""
+                UPDATE plugin_binding_versions
+                   SET "SupersededAt" = {when.AddDays(1)}
+                 WHERE "Id" = {binding.Id}
+                """));
+    }
 }

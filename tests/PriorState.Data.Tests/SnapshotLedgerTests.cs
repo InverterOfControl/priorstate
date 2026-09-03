@@ -108,9 +108,11 @@ public sealed class SnapshotLedgerTests
                 RunId = run.Id,
                 Url = "https://example.com/duplicate-sequence",
                 CapturedAtUtc = DateTimeOffset.UtcNow,
-                WaczSha256 = Sha256Hash.Parse(new string('f', 64)),
-                WaczObjectKey = "test/duplicate.wacz",
-                WaczSizeBytes = 1,
+                PayloadSha256 = Sha256Hash.Parse(new string('f', 64)),
+                PayloadObjectKey = "test/duplicate.wacz",
+                PayloadSizeBytes = 1,
+                PayloadMediaType = "application/wacz",
+                CanonicalFormVersion = CanonicalSnapshotForm.Version1,
                 CaptureProfileVersionId = profile.Id,
                 Conditions = PostgresFixture.TestConditions,
                 ChainSequence = existing.ChainSequence,
@@ -121,5 +123,34 @@ public sealed class SnapshotLedgerTests
 
             await second.SaveChangesAsync();
         });
+    }
+    [Fact]
+    public async Task Verify_CoversPluginSnapshotsAsWellAsPageCaptures()
+    {
+        // Regression guard. Verification re-renders the canonical form of every entry, and the v2
+        // renderer refuses to hash a snapshot whose binding is not loaded. When VerifyAsync did
+        // not Include it, the first plugin snapshot in the chain made the whole ledger
+        // unverifiable — a failure that only appears once a plugin has actually run.
+        await using var db = _postgres.CreateContext();
+        await PostgresFixture.SeedSnapshotAsync(db);
+        await PostgresFixture.SeedPluginSnapshotAsync(db);
+
+        await using var verifyDb = _postgres.CreateContext();
+        var result = await new SnapshotLedger(verifyDb).VerifyAsync();
+
+        Assert.True(result.IsIntact, result.Explanation);
+    }
+
+    [Fact]
+    public async Task PluginSnapshot_LinksIntoTheSameChainAsPageCaptures()
+    {
+        await using var db = _postgres.CreateContext();
+        var page = await PostgresFixture.SeedSnapshotAsync(db);
+        var plugin = await PostgresFixture.SeedPluginSnapshotAsync(db);
+
+        // One chain, not two. This is what makes a plugin entry share the daily Merkle root and
+        // the timestamp that covers it.
+        Assert.Equal(page.ChainSequence + 1, plugin.ChainSequence);
+        Assert.Equal(page.EntryHash, plugin.PreviousHash);
     }
 }

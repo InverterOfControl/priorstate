@@ -14,5 +14,7 @@
     <ProjectReference Include="..\PriorState.Storage\PriorState.Storage.csproj" />
     <ProjectReference Include="..\PriorState.Crawler\PriorState.Crawler.csproj" />
     <ProjectReference Include="..\PriorState.Evidence\PriorState.Evidence.csproj" />
+    <ProjectReference Include="..\PriorState.Plugins\PriorState.Plugins.csproj" />
+    <ProjectReference Include="..\PriorState.Plugins.HttpJson\PriorState.Plugins.HttpJson.csproj" />
   </ItemGroup>
 </Project>

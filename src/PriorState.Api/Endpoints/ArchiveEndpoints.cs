@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PriorState.Api.Services;
 using PriorState.Data;
 using PriorState.Domain.Entities;
+using PriorState.Domain.ValueObjects;
 using PriorState.Evidence;
 using PriorState.Ledger;
 
@@ -57,7 +58,8 @@ public static class ArchiveEndpoints
                     s.EntryHash.Value,
                     s.CaptureProfileVersion!.Designation,
                     s.StorageWorm,
-                    s.TimestampAnchorId != null))
+                    s.TimestampAnchorId != null,
+                    s.PluginBindingVersion != null ? s.PluginBindingVersion.PluginId : null))
                 .ToListAsync(ct);
         });
 
@@ -70,6 +72,7 @@ public static class ArchiveEndpoints
             var snapshot = await db.Snapshots
                 .AsNoTracking()
                 .Include(s => s.CaptureProfileVersion)
+                .Include(s => s.PluginBindingVersion)
                 .Include(s => s.TimestampAnchor)
                 .FirstOrDefaultAsync(s => s.Id == id, ct);
 
@@ -84,8 +87,11 @@ public static class ArchiveEndpoints
             return Results.Ok(snapshot);
         });
 
-        // Streams the WACZ for ReplayWeb.page. Range requests matter here: the replay component
-        // seeks within the archive rather than downloading all of it.
+        // Streams the stored payload. For a page capture that is the WACZ, and ReplayWeb.page
+        // seeks within it rather than downloading all of it, so range requests matter. For a
+        // plugin snapshot it is whatever the endpoint returned, served under the media type that
+        // was recorded — handing a caller JSON labelled application/wacz would be a lie about the
+        // one thing this file is supposed to be authoritative about.
         group.MapGet("/{id:guid}/archive", async (
             Guid id,
             PriorStateDbContext db,
@@ -99,10 +105,18 @@ public static class ArchiveEndpoints
                 return Results.NotFound();
             }
 
+            // Reading the archived bytes is an access event, whichever kind of payload it is.
             await audit.RecordAsync(AuditAction.SnapshotReplayed, nameof(Snapshot), id.ToString(), snapshot.Url, ct);
 
-            var stream = await storage.GetAsync(snapshot.WaczObjectKey, ct);
-            return Results.Stream(stream, "application/wacz", $"{id}.wacz", enableRangeProcessing: true);
+            var isPageCapture = string.Equals(
+                snapshot.CanonicalFormVersion, CanonicalSnapshotForm.Version1, StringComparison.Ordinal);
+
+            var fileName = isPageCapture
+                ? $"{id}.wacz"
+                : PayloadNaming.FileNameFor(snapshot.PayloadMediaType);
+
+            var stream = await storage.GetAsync(snapshot.PayloadObjectKey, ct);
+            return Results.Stream(stream, snapshot.PayloadMediaType, fileName, enableRangeProcessing: true);
         });
 
         group.MapGet("/{id:guid}/evidence", async (
@@ -115,6 +129,7 @@ public static class ArchiveEndpoints
             var snapshot = await db.Snapshots
                 .AsNoTracking()
                 .Include(s => s.CaptureProfileVersion)
+                .Include(s => s.PluginBindingVersion)
                 .Include(s => s.TimestampAnchor)
                 .FirstOrDefaultAsync(s => s.Id == id, ct);
 
@@ -247,7 +262,9 @@ public sealed record SnapshotSummary(
     string EntryHash,
     string CaptureProfile,
     WormSupport StorageWorm,
-    bool Timestamped);
+    bool Timestamped,
+    /// <summary>Plugin that produced this entry, or null for a page capture.</summary>
+    string? Plugin);
 
 public sealed record LedgerStatus(
     long ChainLength,

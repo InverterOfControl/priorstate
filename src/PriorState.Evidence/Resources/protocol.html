@@ -78,7 +78,7 @@
 
 <h1>Erfassungsprotokoll</h1>
 <p class="subtitle">
-  Nachweis über den Zustand einer Webseite zu einem bestimmten Zeitpunkt.<br>
+  {{ProtocolSubtitle}}<br>
   Erstellt am {{GeneratedAt}} durch PriorState {{ToolVersion}}.
 </p>
 
@@ -87,34 +87,16 @@
   <tr><th>URL</th><td>{{Url}}</td></tr>
   <tr><th>Tatsächlich geladen</th><td>{{FinalUrl}}</td></tr>
   <tr><th>Erfassungszeitpunkt</th><td>{{CapturedAtUtc}} (UTC)</td></tr>
-  <tr><th>Archivdatei</th><td>snapshot.wacz, {{WaczSizeBytes}} Bytes</td></tr>
+  {{PayloadSummaryRow}}
   <tr><th>Kennung</th><td class="hash">{{SnapshotId}}</td></tr>
 </table>
 
-<h2>Erfassungsbedingungen</h2>
-<table>
-  <tr><th>Erfassungsprofil</th><td>{{ProfileDesignation}}</td></tr>
-  <tr><th>User-Agent</th><td class="hash">{{UserAgent}}</td></tr>
-  <tr><th>Darstellungsfläche</th><td>{{Viewport}} Pixel</td></tr>
-  <tr><th>Angemeldete Sitzung</th><td>{{AuthenticatedSession}}</td></tr>
-  <tr><th>Inhaltsblocker aktiv</th><td>{{AdBlockerActive}}</td></tr>
-  <tr><th>Cookie-Banner</th><td>{{CookieBanner}}</td></tr>
-  <tr><th>Wartezeit nach Laden</th><td>{{JavaScriptSettleMs}} ms</td></tr>
-  <tr><th>Chromium-Version</th><td>{{ChromiumVersion}}</td></tr>
-  <tr><th>Crawler-Version</th><td>{{CrawlerVersion}}</td></tr>
-</table>
-
-<p>
-  Die Erfassungsbedingungen sind nicht frei einstellbar, sondern durch ein benanntes und
-  versioniertes Profil festgelegt. Eine Änderung des Profils erzeugt eine neue Version und wirkt
-  ausschließlich für künftige Erfassungen; bereits erfasste Stände behalten das Profil, unter dem
-  sie aufgenommen wurden.
-</p>
+{{CaptureContextBlock}}
 
 <h2>Integritätsnachweis</h2>
 <table>
   <tr><th>Position in der Kette</th><td>{{ChainSequence}}</td></tr>
-  <tr><th>Hash der Archivdatei</th><td class="hash">{{WaczSha256}}</td></tr>
+  {{PayloadHashRow}}
   <tr><th>Vorgänger-Hash</th><td class="hash">{{PreviousHash}}</td></tr>
   <tr><th>Eintrags-Hash</th><td class="hash">{{EntryHash}}</td></tr>
   <tr><th>Wurzel-Hash des Tages</th><td class="hash">{{MerkleRoot}}</td></tr>
@@ -157,8 +139,9 @@
 <ol>
   <li>Beweispaket entpacken.</li>
   <li><code>sh verify.sh</code> ausführen (benötigt: POSIX-Shell, openssl, xxd, sha256sum).</li>
-  <li>Das Skript prüft die Archivdatei, den Eintrags-Hash, die Zugehörigkeit zum Wurzel-Hash und
-      die Signatur des Zeitstempels und gibt den Rückgabewert 0 aus, wenn alle Prüfungen bestehen.</li>
+  <li>Das Skript prüft die beiliegenden Nutzdaten, den Eintrags-Hash, die Zugehörigkeit zum
+      Wurzel-Hash und die Signatur des Zeitstempels und gibt den Rückgabewert 0 aus, wenn alle
+      Prüfungen bestehen.</li>
 </ol>
 <p>
   Das Skript ist kurz gehalten und kommentiert, damit es vor der Ausführung vollständig gelesen
@@ -168,10 +151,7 @@
 
 <div class="notice">
   <p>
-    <strong>Grenzen dieses Protokolls.</strong> Bescheinigt wird, dass die beiliegende Archivdatei
-    seit dem Erfassungszeitpunkt unverändert ist und zum bescheinigten Zeitpunkt bereits bestand.
-    Nicht bescheinigt wird, dass die Erfassung inhaltlich vollständig oder repräsentativ ist;
-    dies ist anhand der Archivdatei und der oben genannten Erfassungsbedingungen zu beurteilen.
+    {{ScopeNotice}}
   </p>
   <p>
     Dieses Dokument ist keine Rechtsberatung.

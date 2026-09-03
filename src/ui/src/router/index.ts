@@ -10,6 +10,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/snapshots/:id', name: 'snapshot', component: () => import('@/views/SnapshotView.vue'), props: true },
   { path: '/runs', name: 'runs', component: () => import('@/views/RunsView.vue') },
   { path: '/profiles', name: 'profiles', component: () => import('@/views/ProfilesView.vue') },
+  { path: '/plugins', name: 'plugins', component: () => import('@/views/PluginsView.vue') },
   { path: '/audit', name: 'audit', component: () => import('@/views/AuditView.vue') },
 ]
 

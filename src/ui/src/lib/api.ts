@@ -25,7 +25,7 @@ export function setUnauthorizedHandler(handler: () => void): void {
   onUnauthorized = handler
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function send(path: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(path, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
@@ -50,6 +50,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(response.status, detail)
   }
 
+  return response
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await send(path, init)
+
   // Not every success carries a body. Identity's /register and /login return 200 with nothing in
   // it, and calling response.json() on an empty body throws "Unexpected end of JSON input" — which
   // surfaces as a failure for a request that actually succeeded. Read as text and only parse when
@@ -60,6 +66,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
+  // The archived payload of a plugin snapshot is not JSON to this client — it is whatever the
+  // endpoint returned, and it has to arrive unparsed so what is shown is what was stored.
+  getText: async (path: string) => (await send(path)).text(),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, body === undefined ? { method: 'POST' } : { method: 'POST', body: JSON.stringify(body) }),
 }
@@ -85,6 +94,29 @@ export interface SnapshotSummary {
   captureProfile: string
   storageWorm: WormSupport
   timestamped: boolean
+  // Plugin that produced this entry, or null for a page capture.
+  plugin: string | null
+}
+
+export interface PluginSummary {
+  id: string
+  displayName: string
+  version: string
+}
+
+export interface PluginBindingSummary {
+  id: string
+  projectId: string
+  pluginId: string
+  name: string
+  version: number
+  designation: string
+  configurationJson: string
+  secretRef: string | null
+  rationale: string
+  required: boolean
+  createdAt: string
+  supersededAt: string | null
 }
 
 export interface LedgerStatus {

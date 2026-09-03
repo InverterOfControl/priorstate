@@ -52,20 +52,40 @@ public sealed class VerifyScriptTests
     [InlineData("timestamp/token.tsr")]
     [InlineData("timestamp/root.txt")]
     [InlineData("merkle/audit-path.txt")]
+    [InlineData("plugin/binding.txt")]
+    [InlineData("plugin/configuration.json")]
     public void VerifyScript_ReferencesEveryFileThePackageShips(string path)
     {
         Assert.Contains(path, VerifyScript, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void VerifyScript_PerformsAllFourChecks()
+    public void VerifyScript_PerformsEveryCheck()
     {
-        // Archive hash, entry hash, Merkle inclusion, timestamp signature. Losing any one of them
-        // would leave the script reporting OK for a package it has not actually established.
-        Assert.Contains("sha256_file snapshot.wacz", VerifyScript, StringComparison.Ordinal);
+        // Payload hash, entry hash, Merkle inclusion, timestamp signature, and — for a plugin
+        // package — the configuration digest. Losing any one of them would leave the script
+        // reporting OK for a package it has not actually established.
+        Assert.Contains("sha256_file \"$PAYLOAD_FILE\"", VerifyScript, StringComparison.Ordinal);
         Assert.Contains("sha256_stdin < canonical/entry.txt", VerifyScript, StringComparison.Ordinal);
         Assert.Contains("audit-path.txt", VerifyScript, StringComparison.Ordinal);
         Assert.Contains("openssl ts -verify", VerifyScript, StringComparison.Ordinal);
+        Assert.Contains("sha256_file plugin/binding.txt", VerifyScript, StringComparison.Ordinal);
+        Assert.Contains("sha256_file plugin/configuration.json", VerifyScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VerifyScript_RefusesACanonicalFormItDoesNotKnow()
+    {
+        // A package written by a newer PriorState must stop rather than fall through to a default
+        // and report OK against fields it never read.
+        Assert.Contains("Unknown canonical form", VerifyScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VerifyScript_HandlesBothCanonicalForms()
+    {
+        Assert.Contains("priorstate-snapshot-v1)", VerifyScript, StringComparison.Ordinal);
+        Assert.Contains("priorstate-snapshot-v2)", VerifyScript, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -114,10 +134,11 @@ public sealed class VerifyScriptTests
         // from a legal document. Checking the load-bearing ones by name.
         string[] required =
         [
-            "{{Url}}", "{{CapturedAtUtc}}", "{{ProfileDesignation}}", "{{WaczSha256}}",
+            "{{Url}}", "{{CapturedAtUtc}}", "{{ProfileDesignation}}", "{{PayloadHashRow}}",
             "{{PreviousHash}}", "{{EntryHash}}", "{{MerkleRoot}}", "{{TsaUrl}}",
             "{{TsaGeneralizedTime}}", "{{TsaQualified}}", "{{TsaWarning}}", "{{StorageWorm}}",
-            "{{ChainSequence}}", "{{ChromiumVersion}}", "{{CrawlerVersion}}",
+            "{{ChainSequence}}", "{{CaptureContextBlock}}", "{{PayloadSummaryRow}}",
+            "{{ProtocolSubtitle}}", "{{ScopeNotice}}",
         ];
 
         foreach (var placeholder in required)
@@ -129,7 +150,7 @@ public sealed class VerifyScriptTests
     [Fact]
     public void ProtocolTemplate_StatesTheLimitsOfWhatItCertifies()
     {
-        Assert.Contains("Grenzen dieses Protokolls", ProtocolTemplate, StringComparison.Ordinal);
+        Assert.Contains("{{ScopeNotice}}", ProtocolTemplate, StringComparison.Ordinal);
         Assert.Contains("keine Rechtsberatung", ProtocolTemplate, StringComparison.Ordinal);
     }
 

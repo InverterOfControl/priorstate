@@ -9,6 +9,9 @@
     <ProjectReference Include="..\PriorState.Storage\PriorState.Storage.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="PriorState.Evidence.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- verify.sh is emitted verbatim into every evidence package. -->
     <EmbeddedResource Include="Resources\verify.sh" />
     <EmbeddedResource Include="Resources\protocol.html" />

@@ -45,4 +45,6 @@ public enum AuditAction
     UserSignedOut = 11,
     UserAccountCreated = 12,
     TimestampAnchorCreated = 13,
+    PluginBindingVersionCreated = 14,
+    PluginBindingRetired = 15,
 }

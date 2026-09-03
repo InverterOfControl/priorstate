@@ -7,12 +7,18 @@
 # package alone. It contacts no server and trusts nothing about the system that produced the
 # package. If it prints OK at the end, then:
 #
-#   1. The archive file (snapshot.wacz) is byte-for-byte the file that was recorded.
-#   2. The recorded metadata (URL, capture time, capture profile, browser conditions) hashes to
-#      the entry hash that was committed to the ledger.
+#   1. The payload file is byte-for-byte the file that was recorded.
+#   2. The recorded metadata (URL, capture time, capture profile, and either the browser
+#      conditions or the plugin that fetched it) hashes to the entry hash committed to the ledger.
 #   3. That entry hash is provably part of the Merkle root for its day.
 #   4. That Merkle root was submitted to an independent timestamp authority, which signed it at
 #      the stated time — so the snapshot existed, in exactly this form, before that moment.
+#   5. For a package produced by a capture plugin: the configuration shipped alongside is exactly
+#      the one the ledger entry commits to.
+#
+# There are two kinds of package. A page capture ships snapshot.wacz and records the browser
+# conditions it ran under; a plugin capture ships what an endpoint returned, plus the configuration
+# it was fetched under. Which one this is follows from the first line of canonical/entry.txt.
 #
 # It is intentionally short and dependency-free so that it can be read in full before it is run.
 # You are not expected to trust it; you are expected to read it.
@@ -60,7 +66,29 @@ canonical_field() {
   sed -n "s/^$1=//p" canonical/entry.txt | head -n 1
 }
 
-for required in canonical/entry.txt manifest.txt snapshot.wacz timestamp/token.tsr timestamp/root.txt; do
+# Which canonical form this entry was hashed under. It decides which payload file the package
+# ships and which field names the entry uses. An unknown form means this script is older than the
+# package: stop rather than guess.
+FORM="$(head -n 1 canonical/entry.txt | tr -d '\r')"
+
+case "$FORM" in
+  priorstate-snapshot-v1)
+    PAYLOAD_FILE="snapshot.wacz"
+    PAYLOAD_HASH_FIELD="wacz_sha256"
+    EXTRA_REQUIRED=""
+    ;;
+  priorstate-snapshot-v2)
+    PAYLOAD_FILE="$(sed -n 's/^payload_file=//p' manifest.txt | head -n 1)"
+    PAYLOAD_HASH_FIELD="payload_sha256"
+    EXTRA_REQUIRED="plugin/binding.txt plugin/configuration.json"
+    [ -n "$PAYLOAD_FILE" ] || die "This package declares no payload_file in manifest.txt."
+    ;;
+  *)
+    die "Unknown canonical form '$FORM'. This package was written by a newer PriorState than this script."
+    ;;
+esac
+
+for required in canonical/entry.txt manifest.txt "$PAYLOAD_FILE" timestamp/token.tsr timestamp/root.txt $EXTRA_REQUIRED; do
   [ -f "$required" ] || die "This package is incomplete: $required is missing."
 done
 
@@ -76,21 +104,21 @@ say "  Profile       $(canonical_field profile)"
 say "  Chain entry   $(canonical_field sequence)"
 say ""
 
-# --- 1. The archive is the archive that was recorded ----------------------------------------
+# --- 1. The payload is the payload that was recorded -----------------------------------------
 #
-# The canonical entry names a SHA-256 for the WACZ. Recompute it from the file on disk. If this
-# fails, the archive has been altered or replaced since it was recorded.
+# The canonical entry names a SHA-256 for the payload. Recompute it from the file on disk. If this
+# fails, the payload has been altered or replaced since it was recorded.
 
-say "1. Archive integrity"
-EXPECTED_WACZ="$(canonical_field wacz_sha256)"
-ACTUAL_WACZ="$(sha256_file snapshot.wacz)"
+say "1. Payload integrity"
+EXPECTED_PAYLOAD="$(canonical_field "$PAYLOAD_HASH_FIELD")"
+ACTUAL_PAYLOAD="$(sha256_file "$PAYLOAD_FILE")"
 
-if [ "$EXPECTED_WACZ" = "$ACTUAL_WACZ" ]; then
-  pass "snapshot.wacz matches the recorded hash ($ACTUAL_WACZ)"
+if [ "$EXPECTED_PAYLOAD" = "$ACTUAL_PAYLOAD" ]; then
+  pass "$PAYLOAD_FILE matches the recorded hash ($ACTUAL_PAYLOAD)"
 else
-  fail "snapshot.wacz does NOT match."
-  say  "          recorded: $EXPECTED_WACZ"
-  say  "          actual:   $ACTUAL_WACZ"
+  fail "$PAYLOAD_FILE does NOT match."
+  say  "          recorded: $EXPECTED_PAYLOAD"
+  say  "          actual:   $ACTUAL_PAYLOAD"
 fi
 say ""
 
@@ -180,6 +208,43 @@ else
 fi
 
 say ""
+
+# --- 5. The plugin ran under the configuration shipped here ----------------------------------
+#
+# Only for a plugin capture. The entry commits to a digest of the binding, and the binding commits
+# to a digest of the configuration. Recomputing both is what answers the obvious objection: that
+# the endpoint was pointed somewhere else and the result presented as this one.
+
+if [ "$FORM" = "priorstate-snapshot-v2" ]; then
+  say "5. Plugin configuration"
+
+  EXPECTED_BINDING="$(canonical_field binding_digest)"
+  ACTUAL_BINDING="$(sha256_file plugin/binding.txt)"
+
+  if [ "$EXPECTED_BINDING" = "$ACTUAL_BINDING" ]; then
+    pass "plugin/binding.txt is the configuration the ledger entry names"
+  else
+    fail "plugin/binding.txt does NOT match the ledger entry."
+    say  "          recorded: $EXPECTED_BINDING"
+    say  "          actual:   $ACTUAL_BINDING"
+  fi
+
+  EXPECTED_CONFIG="$(sed -n 's/^config_sha256=//p' plugin/binding.txt | head -n 1)"
+  ACTUAL_CONFIG="$(sha256_file plugin/configuration.json)"
+
+  if [ "$EXPECTED_CONFIG" = "$ACTUAL_CONFIG" ]; then
+    pass "plugin/configuration.json is the configuration that was used"
+  else
+    fail "plugin/configuration.json does NOT match."
+    say  "          recorded: $EXPECTED_CONFIG"
+    say  "          actual:   $ACTUAL_CONFIG"
+  fi
+
+  say ""
+  say "  Plugin:         $(canonical_field plugin) $(canonical_field plugin_version)"
+  say "  Configuration:  $(canonical_field binding)"
+fi
+
 say "  Asserted time:  $(openssl ts -reply -in timestamp/token.tsr -token_in -text 2>/dev/null \
                           | sed -n 's/^ *Time stamp: *//p' | head -n 1)"
 say "  Authority:      $(sed -n 's/^tsa_url=//p' manifest.txt | head -n 1)"
@@ -191,10 +256,17 @@ say ""
 if [ "$FAILURES" -eq 0 ]; then
   say "RESULT: OK — every check passed."
   say ""
-  say "Note on scope: these checks prove that this archive is unaltered since it was recorded and"
-  say "that it existed before the attested time. They say nothing about whether the capture was"
-  say "complete or representative; for that, inspect snapshot.wacz itself and the capture profile"
-  say "and conditions listed in canonical/entry.txt."
+  say "Note on scope: these checks prove that this payload is unaltered since it was recorded and"
+  say "that it existed before the attested time."
+  if [ "$FORM" = "priorstate-snapshot-v2" ]; then
+    say "They say nothing about whether what the endpoint returned was correct. What is attested is"
+    say "receipt, not truth: that these bytes came back from the URL in canonical/entry.txt, under"
+    say "the configuration in plugin/configuration.json, before the attested time."
+  else
+    say "They say nothing about whether the capture was complete or representative; for that,"
+    say "inspect $PAYLOAD_FILE itself and the capture profile and conditions listed in"
+    say "canonical/entry.txt."
+  fi
   exit 0
 fi
 

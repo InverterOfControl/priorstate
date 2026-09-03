@@ -449,6 +449,62 @@ namespace PriorState.Data.Migrations
                     b.ToTable("deployment_ledger_entries", (string)null);
                 });
 
+            modelBuilder.Entity("PriorState.Domain.Entities.PluginBindingVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConfigurationJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("PluginId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Rationale")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("Required")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SecretRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("SupersededAt")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "SupersededAt")
+                        .HasDatabaseName("ix_plugin_binding_versions_project_superseded_at");
+
+                    b.HasIndex("ProjectId", "Name", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_plugin_binding_versions_project_name_version");
+
+                    b.ToTable("plugin_binding_versions", (string)null);
+                });
+
             modelBuilder.Entity("PriorState.Domain.Entities.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -521,6 +577,10 @@ namespace PriorState.Data.Migrations
                     b.Property<DateTimeOffset?>("FinishedAt")
                         .HasColumnType("timestamptz");
 
+                    b.PrimitiveCollection<string>("PluginFailures")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
@@ -556,6 +616,11 @@ namespace PriorState.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CanonicalFormVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<Guid>("CaptureProfileVersionId")
                         .HasColumnType("uuid");
 
@@ -577,6 +642,32 @@ namespace PriorState.Data.Migrations
                     b.Property<string>("FinalUrl")
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
+
+                    b.Property<string>("PayloadMediaType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PayloadObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("PayloadSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<long>("PayloadSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("PluginBindingVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PluginVersion")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
 
                     b.Property<string>("PreviousHash")
                         .IsRequired()
@@ -600,27 +691,11 @@ namespace PriorState.Data.Migrations
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
 
-                    b.Property<string>("WaczObjectKey")
-                        .IsRequired()
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)");
-
-                    b.Property<string>("WaczSha256")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character(64)")
-                        .IsFixedLength();
-
-                    b.Property<long>("WaczSizeBytes")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTimeOffset?>("WormRetainUntil")
                         .HasColumnType("timestamptz");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Conditions", "PriorState.Domain.Entities.Snapshot.Conditions#CaptureConditions", b1 =>
                         {
-                            b1.IsRequired();
-
                             b1.Property<bool>("AdBlockerActive")
                                 .HasColumnType("boolean");
 
@@ -669,12 +744,14 @@ namespace PriorState.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_snapshots_entry_hash");
 
+                    b.HasIndex("PayloadSha256")
+                        .HasDatabaseName("ix_snapshots_payload_sha256");
+
+                    b.HasIndex("PluginBindingVersionId");
+
                     b.HasIndex("RunId");
 
                     b.HasIndex("TimestampAnchorId");
-
-                    b.HasIndex("WaczSha256")
-                        .HasDatabaseName("ix_snapshots_wacz_sha256");
 
                     b.HasIndex("Url", "CapturedAtUtc")
                         .HasDatabaseName("ix_snapshots_url_captured_at");
@@ -815,6 +892,17 @@ namespace PriorState.Data.Migrations
                     b.Navigation("Run");
                 });
 
+            modelBuilder.Entity("PriorState.Domain.Entities.PluginBindingVersion", b =>
+                {
+                    b.HasOne("PriorState.Domain.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("PriorState.Domain.Entities.Project", b =>
                 {
                     b.HasOne("PriorState.Domain.Entities.CaptureProfileVersion", "CaptureProfileVersion")
@@ -853,6 +941,11 @@ namespace PriorState.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("PriorState.Domain.Entities.PluginBindingVersion", "PluginBindingVersion")
+                        .WithMany()
+                        .HasForeignKey("PluginBindingVersionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PriorState.Domain.Entities.Run", "Run")
                         .WithMany("Snapshots")
                         .HasForeignKey("RunId")
@@ -865,6 +958,8 @@ namespace PriorState.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("CaptureProfileVersion");
+
+                    b.Navigation("PluginBindingVersion");
 
                     b.Navigation("Run");
 

@@ -26,18 +26,56 @@ public sealed class Snapshot
     /// <summary>UTC, to the second. Local time never appears anywhere in the chain.</summary>
     public required DateTimeOffset CapturedAtUtc { get; set; }
 
-    /// <summary>SHA-256 of the WACZ file as stored. The anchor between the chain and the artefact.</summary>
-    public required Sha256Hash WaczSha256 { get; set; }
+    /// <summary>
+    /// SHA-256 of the payload as stored. The anchor between the chain and the artefact.
+    ///
+    /// The payload is the WACZ archive for a page capture, and whatever a capture plugin returned
+    /// for a plugin snapshot. Which one it is follows from CanonicalFormVersion; the hash means the
+    /// same thing either way, so the chain does not need to care.
+    /// </summary>
+    public required Sha256Hash PayloadSha256 { get; set; }
 
-    public required string WaczObjectKey { get; set; }
+    public required string PayloadObjectKey { get; set; }
 
-    public required long WaczSizeBytes { get; set; }
+    public required long PayloadSizeBytes { get; set; }
+
+    /// <summary>The media type of the payload as stored, e.g. "application/wacz".</summary>
+    public required string PayloadMediaType { get; set; }
 
     public Guid CaptureProfileVersionId { get; set; }
 
     public CaptureProfileVersion? CaptureProfileVersion { get; set; }
 
-    public required CaptureConditions Conditions { get; set; }
+    /// <summary>
+    /// The browser conditions the capture actually ran under.
+    ///
+    /// Null for a plugin snapshot: an API call has no viewport, no user agent and no Chromium
+    /// version, and recording invented ones would be a false statement in the one document that
+    /// has to survive being read adversarially. The v1 canonical form requires this and refuses
+    /// to render without it.
+    /// </summary>
+    public CaptureConditions? Conditions { get; set; }
+
+    // --- Provenance, for a snapshot produced by a capture plugin ---
+
+    /// <summary>
+    /// Which canonical form this entry's hash was computed over. Never changes after insert, and
+    /// is not itself hashed — it selects the renderer rather than being one of its fields.
+    ///
+    /// Page captures are written as v1 and stay v1 forever; plugin snapshots are written as v2.
+    /// </summary>
+    public required string CanonicalFormVersion { get; set; }
+
+    /// <summary>The binding that produced this snapshot, or null for a page capture.</summary>
+    public Guid? PluginBindingVersionId { get; set; }
+
+    public PluginBindingVersion? PluginBindingVersion { get; set; }
+
+    /// <summary>
+    /// The plugin's version as observed at execution time, read from the assembly that actually
+    /// ran rather than from anything the plugin or the configuration declared about itself.
+    /// </summary>
+    public string? PluginVersion { get; set; }
 
     /// <summary>Extracted page text, for full-text search and diffing. Not part of the hash input.</summary>
     public string? ExtractedText { get; set; }

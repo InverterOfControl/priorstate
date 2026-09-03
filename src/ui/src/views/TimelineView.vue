@@ -34,6 +34,13 @@ onMounted(async () => {
               {{ formatUtc(snapshot.capturedAtUtc) }}
             </span>
             <span class="flex-1 truncate text-sm group-hover:underline">{{ snapshot.url }}</span>
+            <!-- A plugin entry is not a page capture, and the timeline should not imply it is. -->
+            <span
+              v-if="snapshot.plugin"
+              class="shrink-0 rounded border border-rule px-1.5 py-0.5 text-xs text-ink-muted"
+            >
+              {{ snapshot.plugin }}
+            </span>
             <span class="hash hidden shrink-0 text-ink-muted md:inline">{{ shortHash(snapshot.entryHash) }}</span>
             <span v-if="!snapshot.timestamped" class="shrink-0 text-xs text-caution">
               {{ t('timestamp.pending') }}

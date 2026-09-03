@@ -35,6 +35,16 @@ public sealed class Run
     /// </summary>
     public List<string> CrawlerArguments { get; set; } = [];
 
+    /// <summary>
+    /// Capture plugins that failed during this run, one line each.
+    ///
+    /// A plugin that is not marked Required does not fail the run — losing an irreplaceable page
+    /// capture because an ERP was briefly down would be the wrong trade. But the attempt still
+    /// happened, so it is recorded here rather than only in the logs: "the plugin did not run that
+    /// day" and "the plugin ran and returned nothing" are different facts.
+    /// </summary>
+    public List<string> PluginFailures { get; set; } = [];
+
     public List<Snapshot> Snapshots { get; set; } = [];
 }
 

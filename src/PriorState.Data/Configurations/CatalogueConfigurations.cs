@@ -67,6 +67,7 @@ internal sealed class RunConfiguration : IEntityTypeConfiguration<Run>
 
         // Recorded verbatim so a third party can reproduce the capture by hand.
         builder.Property(r => r.CrawlerArguments).HasColumnType("jsonb").IsRequired();
+        builder.Property(r => r.PluginFailures).HasColumnType("jsonb").IsRequired();
 
         builder.HasOne(r => r.Project)
             .WithMany()
@@ -101,5 +102,39 @@ internal sealed class CrawlJobConfiguration : IEntityTypeConfiguration<CrawlJob>
         // The claim query orders by AvailableAt over pending rows; this index is what keeps
         // FOR UPDATE SKIP LOCKED cheap as the table grows.
         builder.HasIndex(j => new { j.State, j.AvailableAt }).HasDatabaseName("ix_crawl_jobs_state_available_at");
+    }
+}
+
+internal sealed class PluginBindingVersionConfiguration : IEntityTypeConfiguration<PluginBindingVersion>
+{
+    public void Configure(EntityTypeBuilder<PluginBindingVersion> builder)
+    {
+        builder.ToTable("plugin_binding_versions");
+        builder.HasKey(b => b.Id);
+
+        builder.Property(b => b.PluginId).HasMaxLength(64).IsRequired();
+        builder.Property(b => b.Name).HasMaxLength(120).IsRequired();
+        builder.Property(b => b.Version).IsRequired();
+        builder.Property(b => b.SecretRef).HasMaxLength(200);
+        builder.Property(b => b.Rationale).HasMaxLength(2000).IsRequired();
+        builder.Property(b => b.Required).IsRequired();
+
+        // text, not jsonb. jsonb reorders keys and drops whitespace, so the bytes read back would
+        // not be the bytes the binding digest was computed over, and the evidence package ships
+        // these bytes verbatim for the recipient to hash themselves.
+        builder.Property(b => b.ConfigurationJson).HasColumnType("text").IsRequired();
+
+        builder.HasOne(b => b.Project)
+            .WithMany()
+            .HasForeignKey(b => b.ProjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(b => new { b.ProjectId, b.Name, b.Version })
+            .IsUnique()
+            .HasDatabaseName("ix_plugin_binding_versions_project_name_version");
+
+        // The runner asks for "every live binding on this project" once per run.
+        builder.HasIndex(b => new { b.ProjectId, b.SupersededAt })
+            .HasDatabaseName("ix_plugin_binding_versions_project_superseded_at");
     }
 }

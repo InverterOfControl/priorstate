@@ -33,6 +33,9 @@ public sealed class PriorStateDbContext : IdentityDbContext<ApplicationUser>
     /// <summary>Operational state, not recorded history. This one is mutable on purpose.</summary>
     public DbSet<CrawlJob> CrawlJobs => Set<CrawlJob>();
 
+    /// <summary>Versioned plugin configuration. Append-only, like capture profiles.</summary>
+    public DbSet<PluginBindingVersion> PluginBindingVersions => Set<PluginBindingVersion>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

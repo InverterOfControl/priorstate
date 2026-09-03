@@ -63,6 +63,19 @@ host, not to the worker.
 | `Evidence:ProtocolTemplatePath` | — | Override the built-in German template. |
 | `Evidence:RendererImage` | the crawler image | Chromium used for HTML → PDF. |
 
+## Capture plugins
+
+See [Capture plugins](/operations/plugins).
+
+| Key | Default | Notes |
+|---|---|---|
+| `Plugins:HttpJson:AllowedHosts` | empty | Hosts a binding may call. **Empty means any host.** Set it: the worker holds the Docker socket, so an unrestricted fetch is an escalation path, not a convenience. |
+| `Plugins:HttpJson:MaxPayloadBytes` | `33554432` | Largest response archived. Payloads are buffered in memory to be hashed. |
+| `Plugins:HttpJson:Timeout` | `00:00:30` | Per request. |
+
+Credentials are not configured here. A binding names an environment variable, which must be called
+`PS_SECRET_<NAME>`; only the name is stored and printed, never the value.
+
 ## Authentication
 
 | Key | Default |

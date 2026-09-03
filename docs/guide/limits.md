@@ -29,6 +29,12 @@ it is not a proof.
 **That the site was reachable to everyone.** The archive records what this browser, from this
 network, at this moment, received.
 
+**That data fetched by a capture plugin was correct.** A [capture plugin](/operations/plugins)
+archives what an endpoint returned, and the package proves those bytes are unaltered and predate
+the timestamp. It does not establish that the endpoint told the truth: what is attested is receipt,
+not correctness. If the upstream system was wrong, the archive faithfully records that it was
+wrong.
+
 **That storage was immutable.** Reported per snapshot, honestly, and frequently "no". See
 [Storage and WORM](/operations/storage). It does not weaken points 1–4 above.
 

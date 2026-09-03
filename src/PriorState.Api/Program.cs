@@ -8,6 +8,8 @@ using PriorState.Crawler;
 using PriorState.Data;
 using PriorState.Evidence;
 using PriorState.Ledger.Timestamping;
+using PriorState.Plugins;
+using PriorState.Plugins.HttpJson;
 using PriorState.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +32,12 @@ builder.Services.AddHttpClient<ITimestampAuthority, Rfc3161TimestampAuthority>()
 builder.Services.AddSingleton<IProtocolRenderer, ChromiumProtocolRenderer>();
 builder.Services.AddScoped<EvidencePackageBuilder>();
 builder.Services.AddScoped<DatabaseInitializer>();
+// The API does not execute plugins; it needs the catalogue so it can list what this build
+// contains and refuse a binding naming a plugin that is not here. Registered from the same
+// configuration as the worker so the two stay in step.
+builder.Services.AddPriorStatePlugins();
+builder.Services.AddHttpJsonCapturePlugin(builder.Configuration);
+
 builder.Services.AddScoped<AuditLog>();
 builder.Services.AddHttpContextAccessor();
 
@@ -119,6 +127,7 @@ app.MapLedgerEndpoints();
 app.MapProfileEndpoints();
 app.MapAuditEndpoints();
 app.MapWebhookEndpoints();
+app.MapPluginEndpoints();
 
 // The Vue application is built to static files and served from here, so the production compose
 // file needs no Node runtime and no second web server.

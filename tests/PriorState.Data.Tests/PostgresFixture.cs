@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PriorState.Data;
 using PriorState.Domain.Entities;
 using PriorState.Domain.ValueObjects;
+using PriorState.Ledger;
 using Testcontainers.PostgreSql;
 
 namespace PriorState.Data.Tests;
@@ -51,6 +52,104 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// Inserts a project, a profile version, a run and one snapshot, and returns the snapshot.
     /// Each call creates its own project so tests do not interfere with one another.
     /// </summary>
+    /// <summary>Seeds a project with one live plugin binding on it, for the append-only tests.</summary>
+    public static async Task<PluginBindingVersion> SeedPluginBindingAsync(
+        PriorStateDbContext db,
+        string name = "erp-prices")
+    {
+        ArgumentNullException.ThrowIfNull(db);
+
+        var profile = await db.CaptureProfileVersions.FirstOrDefaultAsync();
+        if (profile is null)
+        {
+            profile = new CaptureProfileVersion
+            {
+                Name = "Test-Standard",
+                Version = 1,
+                Rationale = "Fixture profile.",
+                Conditions = TestConditions,
+            };
+            db.CaptureProfileVersions.Add(profile);
+            await db.SaveChangesAsync();
+        }
+
+        var project = new Project
+        {
+            Name = $"fixture-{Guid.CreateVersion7()}",
+            SeedUrls = ["https://example.com/"],
+            RetentionYears = 6,
+            CaptureProfileVersionId = profile.Id,
+        };
+        db.Projects.Add(project);
+        await db.SaveChangesAsync();
+
+        var binding = new PluginBindingVersion
+        {
+            ProjectId = project.Id,
+            PluginId = "http-json",
+            Name = name,
+            Version = 1,
+            ConfigurationJson = """{"url":"https://erp.example.com/api/prices"}""",
+            SecretRef = "PS_SECRET_ERP_TOKEN",
+            Rationale = "Fixture binding.",
+            Required = false,
+        };
+        db.PluginBindingVersions.Add(binding);
+        await db.SaveChangesAsync();
+
+        return binding;
+    }
+
+    /// <summary>
+    /// Appends a snapshot produced by a capture plugin: v2 canonical form, no browser conditions,
+    /// and a binding whose digest is part of the entry hash.
+    /// </summary>
+    public static async Task<Snapshot> SeedPluginSnapshotAsync(
+        PriorStateDbContext db,
+        string url = "https://erp.example.com/api/prices")
+    {
+        ArgumentNullException.ThrowIfNull(db);
+
+        var binding = await SeedPluginBindingAsync(db, $"fixture-{Guid.CreateVersion7():n}");
+        var profile = await db.CaptureProfileVersions.FirstAsync();
+
+        var run = new Run
+        {
+            ProjectId = binding.ProjectId,
+            CaptureProfileVersionId = profile.Id,
+            Trigger = RunTrigger.Manual,
+            Status = RunStatus.Running,
+            StartedAt = DateTimeOffset.UtcNow,
+        };
+        db.Runs.Add(run);
+        await db.SaveChangesAsync();
+
+        var snapshot = new Snapshot
+        {
+            RunId = run.Id,
+            Url = url,
+            CapturedAtUtc = DateTimeOffset.UtcNow,
+            PayloadSha256 = Sha256Hash.Parse("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"),
+            PayloadObjectKey = $"test/{Guid.CreateVersion7():n}/payload.json",
+            PayloadSizeBytes = 2048,
+            PayloadMediaType = "application/json",
+            CanonicalFormVersion = CanonicalSnapshotForm.Version2,
+            CaptureProfileVersionId = profile.Id,
+            CaptureProfileVersion = profile,
+            Conditions = null,
+            PluginBindingVersionId = binding.Id,
+            PluginBindingVersion = binding,
+            PluginVersion = "1.4.2",
+            ChainSequence = 0,
+            PreviousHash = Sha256Hash.Genesis,
+            EntryHash = Sha256Hash.Genesis,
+            StorageWorm = WormSupport.Unsupported,
+        };
+
+        await new SnapshotLedger(db).AppendAsync(snapshot);
+        return snapshot;
+    }
+
     public static async Task<Snapshot> SeedSnapshotAsync(PriorStateDbContext db, string url = "https://example.com/")
     {
         var profile = await db.CaptureProfileVersions.FirstOrDefaultAsync();
@@ -92,9 +191,11 @@ public sealed class PostgresFixture : IAsyncLifetime
             RunId = run.Id,
             Url = url,
             CapturedAtUtc = DateTimeOffset.UtcNow,
-            WaczSha256 = Sha256Hash.Parse("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
-            WaczObjectKey = $"test/{Guid.CreateVersion7():n}.wacz",
-            WaczSizeBytes = 4096,
+            PayloadSha256 = Sha256Hash.Parse("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
+            PayloadObjectKey = $"test/{Guid.CreateVersion7():n}.wacz",
+            PayloadSizeBytes = 4096,
+            PayloadMediaType = "application/wacz",
+            CanonicalFormVersion = CanonicalSnapshotForm.Version1,
             CaptureProfileVersionId = profile.Id,
             CaptureProfileVersion = profile,
             Conditions = TestConditions,

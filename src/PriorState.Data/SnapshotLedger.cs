@@ -95,9 +95,13 @@ public sealed class SnapshotLedger
         long? toSequence = null,
         CancellationToken cancellationToken = default)
     {
+        // Both navigations are required: verification re-renders the canonical form of every
+        // entry, and the renderer refuses to hash a snapshot whose profile — or, for a plugin
+        // entry, whose binding — is not loaded.
         var query = _db.Snapshots
             .AsNoTracking()
             .Include(s => s.CaptureProfileVersion)
+            .Include(s => s.PluginBindingVersion)
             .Where(s => s.ChainSequence >= fromSequence);
 
         if (toSequence is { } upper)

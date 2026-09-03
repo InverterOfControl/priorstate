@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using PriorState.Crawler;
 using PriorState.Data;
 using PriorState.Domain.Entities;
+using PriorState.Ledger;
+using PriorState.Plugins;
 using PriorState.Storage;
 
 namespace PriorState.Worker;
@@ -16,6 +18,9 @@ namespace PriorState.Worker;
 public sealed partial class CrawlWorker : BackgroundService
 {
     private static readonly TimeSpan IdlePollInterval = TimeSpan.FromSeconds(5);
+
+    /// <summary>The media type a page capture is stored and recorded under.</summary>
+    private const string WaczMediaType = "application/wacz";
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ICrawler _crawler;
@@ -67,6 +72,7 @@ public sealed partial class CrawlWorker : BackgroundService
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<PriorStateDbContext>();
         var ledger = scope.ServiceProvider.GetRequiredService<SnapshotLedger>();
+        var plugins = scope.ServiceProvider.GetRequiredService<PluginRunner>();
 
         var jobId = await ClaimJobAsync(db, cancellationToken);
         if (jobId is null)
@@ -116,6 +122,11 @@ public sealed partial class CrawlWorker : BackgroundService
                 await AppendSnapshotAsync(ledger, run, profile, waczPath, outcome, retention, cancellationToken);
             }
 
+            // Plugins run only once the page captures are in the ledger. A crawl produces the one
+            // thing that cannot be fetched again later, and no plugin should be able to cost it.
+            // A binding marked Required throws from here and fails the run through FailAsync.
+            run.PluginFailures = [.. await plugins.RunAsync(run, profile, retention, cancellationToken)];
+
             run.Status = RunStatus.Succeeded;
             run.FinishedAt = DateTimeOffset.UtcNow;
             job.State = CrawlJobState.Completed;
@@ -146,16 +157,18 @@ public sealed partial class CrawlWorker : BackgroundService
         var objectKey = $"projects/{run.ProjectId:n}/runs/{run.Id:n}/{Path.GetFileName(waczPath)}";
 
         await using var file = File.OpenRead(waczPath);
-        var stored = await _storage.PutAsync(objectKey, file, "application/wacz", retention, cancellationToken);
+        var stored = await _storage.PutAsync(objectKey, file, WaczMediaType, retention, cancellationToken);
 
         var snapshot = new Snapshot
         {
             RunId = run.Id,
             Url = run.Project!.SeedUrls.FirstOrDefault() ?? string.Empty,
             CapturedAtUtc = run.StartedAt ?? DateTimeOffset.UtcNow,
-            WaczSha256 = stored.Sha256,
-            WaczObjectKey = stored.Key,
-            WaczSizeBytes = stored.SizeBytes,
+            PayloadSha256 = stored.Sha256,
+            PayloadObjectKey = stored.Key,
+            PayloadSizeBytes = stored.SizeBytes,
+            PayloadMediaType = WaczMediaType,
+            CanonicalFormVersion = CanonicalSnapshotForm.Version1,
             CaptureProfileVersionId = profile.Id,
             CaptureProfileVersion = profile,
             // The conditions that actually applied, with tool versions read from the image that

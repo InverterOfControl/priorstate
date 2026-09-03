@@ -42,6 +42,7 @@ export default defineConfig({
           { text: 'Storage and WORM', link: '/operations/storage' },
           { text: 'Timestamp authority', link: '/operations/timestamping' },
           { text: 'Capture profiles', link: '/operations/capture-profiles' },
+          { text: 'Capture plugins', link: '/operations/plugins' },
           { text: 'Backup and retention', link: '/operations/backup' },
           { text: 'Phase 0 requirements', link: '/operations/phase-0-requirements' },
         ],
