@@ -103,10 +103,13 @@ services:
       AUTHENTICATION__OIDC__AUTHORITY: ${OIDC_AUTHORITY:-}
       AUTHENTICATION__OIDC__CLIENTID: ${OIDC_CLIENT_ID:-}
       AUTHENTICATION__OIDC__CLIENTSECRET: ${OIDC_CLIENT_SECRET:-}
+      DATAPROTECTION__KEYPATH: /var/lib/priorstate/keys
     volumes:
       # The API renders evidence protocols by starting a short-lived Chromium container.
       - /var/run/docker.sock:/var/run/docker.sock
       - priorstate-render:/var/lib/priorstate/render
+      # Authentication cookie keys. Without this every restart signs everyone out.
+      - priorstate-keys:/var/lib/priorstate/keys
       - ./tsa-chain.pem:/etc/priorstate/tsa-chain.pem:ro
     networks: [priorstate]
 
@@ -150,6 +153,7 @@ volumes:
   garage-meta:
   garage-data:
   priorstate-render:
+  priorstate-keys:
 
 networks:
   priorstate:

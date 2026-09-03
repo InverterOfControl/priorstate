@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PriorState.Api.Endpoints;
@@ -57,6 +59,24 @@ if (oidcSection.GetValue<bool>("Enabled"))
 }
 
 builder.Services.AddAuthorization();
+
+// Enums go over the wire as names, not numbers. WormSupport in particular is read by a person as
+// often as by code — it appears in the interface and in evidence packages — and "Unsupported" is
+// self-explanatory where "0" is a trap.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Data protection keys encrypt the authentication cookies. Left in the container they are lost on
+// every restart, which signs everyone out — and in a system whose audit log is supposed to record
+// who accessed what, a forced re-authentication of every user on every deployment is noise in
+// exactly the record that matters.
+if (builder.Configuration["DataProtection:KeyPath"] is { Length: > 0 } keyPath)
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keyPath))
+        .SetApplicationName("PriorState");
+}
+
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks()

@@ -2,7 +2,9 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 WORKDIR /src
-COPY global.json Directory.Build.props Directory.Packages.props PriorState.slnx ./
+# .editorconfig carries the analyser configuration, including the suppressions for EF Core's
+# generated migrations. Without it the build fails inside the image but not outside it.
+COPY global.json .editorconfig Directory.Build.props Directory.Packages.props PriorState.slnx ./
 COPY src/ src/
 COPY tests/ tests/
 RUN dotnet restore src/PriorState.Worker/PriorState.Worker.csproj
