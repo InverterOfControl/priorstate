@@ -81,7 +81,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version-file: src/ui/.nvmrc
           cache: npm
           cache-dependency-path: src/ui/package-lock.json
 
