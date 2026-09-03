@@ -1,0 +1,76 @@
+{
+  "app": { "name": "PriorState", "tagline": "Revisionssichere Website-Archivierung" },
+  "nav": {
+    "projects": "Projekte",
+    "timeline": "Zeitleiste",
+    "runs": "Läufe",
+    "ledger": "Kette",
+    "profiles": "Erfassungsprofile",
+    "audit": "Zugriffsprotokoll"
+  },
+  "ledger": {
+    "title": "Kette",
+    "chainLength": "Einträge",
+    "head": "Aktueller Hash",
+    "lastCapture": "Letzte Erfassung",
+    "awaitingTimestamp": "Ohne Zeitstempel",
+    "anchors": "Zeitstempel-Anker",
+    "lastAnchoredDay": "Zuletzt gestempelter Tag",
+    "verify": "Gesamte Kette nachrechnen",
+    "verifying": "Wird nachgerechnet…",
+    "intact": "Kette unversehrt — {count} Einträge aus ihrer kanonischen Form nachgerechnet.",
+    "broken": "Kette bei Eintrag {sequence} unterbrochen: {explanation}",
+    "explain": "Die Prüfung berechnet jeden Eintrags-Hash aus den erfassten Angaben neu und prüft, ob jeder Eintrag auf seinen Vorgänger verweist. Geprüft wird die gesamte Kette, keine Stichprobe."
+  },
+  "storage": {
+    "label": "Unveränderbarkeit des Speichers",
+    "Enforced": "Durchgesetzt — ein Löschversuch während der Sperrfrist wurde abgewiesen",
+    "ApiPresentUnverified": "Angefordert, aber nicht bestätigt",
+    "Unsupported": "Nicht verfügbar",
+    "note": "Der Nachweis beruht auf der Hash-Kette und dem externen Zeitstempel. Beide bleiben gültig, auch wenn der Speicher gelöscht wird. Object Lock ist zusätzliche Absicherung."
+  },
+  "timestamp": {
+    "qualified": "Qualifizierter Anbieter",
+    "unqualified": "Kein qualifizierter eIDAS-Anbieter",
+    "unqualifiedWarning": "Die Zeitstempel stammen von einem Demonstrationsdienst. Sie sind technisch gültig und nachprüfbar, tragen aber keine rechtliche Auseinandersetzung. Vor Erfassungen, auf die Sie sich stützen wollen, einen qualifizierten Anbieter konfigurieren.",
+    "pending": "Noch kein Zeitstempel"
+  },
+  "snapshot": {
+    "title": "Erfassung",
+    "url": "URL",
+    "captured": "Erfasst",
+    "profile": "Erfassungsprofil",
+    "sequence": "Position in der Kette",
+    "entryHash": "Eintrags-Hash",
+    "previousHash": "Vorgänger-Hash",
+    "waczHash": "Hash der Archivdatei",
+    "replay": "Wiedergabe",
+    "conditions": "Erfassungsbedingungen",
+    "evidence": "Beweispaket herunterladen",
+    "evidenceHint": "Ein ZIP mit Archivdatei, Protokoll, Zeitstempel-Token und einem Prüfskript, das die Gegenseite selbst ausführen kann.",
+    "notTimestamped": "Diese Erfassung ist noch nicht verankert. Die Verankerung läuft einmal täglich; ein vorher erzeugtes Beweispaket wäre nicht unabhängig nachprüfbar."
+  },
+  "conditions": {
+    "userAgent": "User-Agent",
+    "viewport": "Darstellungsfläche",
+    "authenticated": "Angemeldete Sitzung",
+    "adBlocker": "Inhaltsblocker",
+    "cookieBanner": "Cookie-Banner",
+    "settle": "Wartezeit",
+    "chromium": "Chromium",
+    "crawler": "Crawler"
+  },
+  "projects": {
+    "title": "Projekte",
+    "none": "Noch keine Projekte.",
+    "seeds": "Start-URLs",
+    "schedule": "Zeitplan",
+    "retention": "Aufbewahrung",
+    "years": "{count} Jahre",
+    "onDemand": "Nur auf Anforderung",
+    "trigger": "Jetzt erfassen"
+  },
+  "runs": { "title": "Läufe", "trigger": "Auslöser", "status": "Status", "queued": "Eingereiht", "snapshots": "Erfassungen" },
+  "audit": { "title": "Zugriffsprotokoll", "when": "Zeitpunkt", "who": "Wer", "action": "Aktion", "subject": "Gegenstand", "detail": "Detail", "note": "Auch Lesezugriffe werden protokolliert, nicht nur Änderungen. Einträge sind weder änderbar noch löschbar." },
+  "common": { "loading": "Wird geladen…", "error": "Etwas ist schiefgelaufen", "yes": "Ja", "no": "Nein", "back": "Zurück" }
+}

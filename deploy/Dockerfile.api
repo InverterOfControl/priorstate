@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1
+
+# The Vue app is built first and baked into the API image, so the running system is one container
+# serving both the API and the interface, and the production compose file needs no Node runtime.
+FROM node:24-alpine AS ui
+WORKDIR /src/ui
+COPY src/ui/package.json src/ui/package-lock.json ./
+RUN npm ci
+COPY src/ui/ ./
+# vite.config.ts writes to ../PriorState.Api/wwwroot, i.e. /src/PriorState.Api/wwwroot here.
+RUN npm run build
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+WORKDIR /src
+COPY global.json Directory.Build.props Directory.Packages.props PriorState.slnx ./
+COPY src/ src/
+COPY --from=ui /src/PriorState.Api/wwwroot/ src/PriorState.Api/wwwroot/
+RUN dotnet restore src/PriorState.Api/PriorState.Api.csproj
+RUN dotnet publish src/PriorState.Api/PriorState.Api.csproj -c Release -o /app --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS final
+WORKDIR /app
+
+# curl is here only for the container health check. The API itself makes no outbound calls that
+# need it — timestamping goes through HttpClient.
+RUN apt-get update \
+ && apt-get install --no-install-recommends -y curl \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 2000 priorstate \
+ && useradd --system --uid 2000 --gid priorstate --create-home priorstate \
+ && mkdir -p /var/lib/priorstate/render \
+ && chown -R priorstate:priorstate /var/lib/priorstate
+
+COPY --from=build --chown=priorstate:priorstate /app ./
+USER priorstate
+
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    DOTNET_gcServer=1
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+  CMD curl --fail --silent http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["dotnet", "PriorState.Api.dll"]

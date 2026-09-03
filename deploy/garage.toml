@@ -1,0 +1,35 @@
+# Single-node Garage for the bundled deployment.
+#
+# Replication factor 1 because this is one node on one machine. That is the right shape for
+# evaluating PriorState and for a small self-hosted install, and the wrong shape for long-term
+# retention of evidence: one disk failure loses the archives. The hash chain and timestamps would
+# still prove what existed, but the WACZ files themselves would be gone.
+#
+# For anything you intend to rely on, either run Garage as a real multi-node cluster or point
+# PriorState at a managed S3 backend. See docs/operations/storage.md.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "garage:3901"
+
+# Generated once for the bundled single-node setup. Replace it for any multi-node cluster:
+#   openssl rand -hex 32
+rpc_secret = "1799bccfd7411eddcf9ebd316bc1f5287ad12a68094e1c6ac6abde7e6feae1ec"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.localhost"
+index = "index.html"
+
+[admin]
+api_bind_addr = "[::]:3903"

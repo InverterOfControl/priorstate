@@ -1,0 +1,155 @@
+# PriorState — one-command deployment.
+#
+# This file matters more than any single feature. Someone who cannot get PriorState running in ten
+# minutes will not evaluate it at all, and an evidence tool nobody evaluates is worth nothing.
+#
+#   cp .env.example .env
+#   docker compose up -d
+#
+# Then open http://localhost:8080 and create the first account.
+#
+# Read this before running it in earnest:
+#
+#   * The default timestamp authority is FreeTSA, a demonstration service. Tokens from it are
+#     technically valid and verifiable but will not carry a legal dispute. Set LEDGER__TSA__URL and
+#     LEDGER__TSA__QUALIFIED to a qualified eIDAS provider before capturing anything you may need
+#     to rely on. Existing snapshots cannot be re-anchored later.
+#
+#   * Garage is bundled because it is light and easy to run, not because it enforces WORM. It does
+#     not implement S3 Object Lock. PriorState probes for this at startup and records the result on
+#     every snapshot, so nothing is claimed that was not verified. For long retention, point
+#     STORAGE__SERVICEURL at a backend that does enforce it — see docs/operations/storage.md.
+#
+#   * The worker mounts the Docker socket in order to start crawl containers. That is equivalent
+#     to host root. Run it on a host you control.
+
+name: priorstate
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-priorstate}
+      POSTGRES_USER: ${POSTGRES_USER:-priorstate}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-priorstate} -d ${POSTGRES_DB:-priorstate}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [priorstate]
+
+  garage:
+    image: dxflrs/garage:v2.1.0
+    restart: unless-stopped
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    networks: [priorstate]
+
+  # Creates the layout, bucket and access key on first start. Garage cannot be fully configured
+  # from its config file, and an evaluator should not have to run admin commands by hand before
+  # the system works. Everything the script does is idempotent, so later starts find the work done
+  # and exit immediately.
+  #
+  # The metadata volume is mounted because the Garage CLI identifies the node by the key stored
+  # there; without it the CLI cannot address a running node at all.
+  garage-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.garage-init
+    image: priorstate-garage-init:v2.1.0
+    depends_on: [garage]
+    restart: on-failure
+    environment:
+      GARAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:?set STORAGE_ACCESS_KEY in .env}
+      GARAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:?set STORAGE_SECRET_KEY in .env}
+      GARAGE_BUCKET: ${STORAGE_BUCKET:-priorstate}
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta:ro
+    networks: [priorstate]
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    image: ghcr.io/saschalaabs/priorstate-api:${PRIORSTATE_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      garage-init: { condition: service_completed_successfully }
+    ports:
+      - "${PRIORSTATE_PORT:-8080}:8080"
+    environment:
+      ConnectionStrings__Postgres: >-
+        Host=postgres;Database=${POSTGRES_DB:-priorstate};Username=${POSTGRES_USER:-priorstate};Password=${POSTGRES_PASSWORD}
+      STORAGE__SERVICEURL: ${STORAGE_SERVICE_URL:-http://garage:3900}
+      STORAGE__BUCKET: ${STORAGE_BUCKET:-priorstate}
+      STORAGE__ACCESSKEY: ${STORAGE_ACCESS_KEY}
+      STORAGE__SECRETKEY: ${STORAGE_SECRET_KEY}
+      STORAGE__REGION: ${STORAGE_REGION:-garage}
+      LEDGER__TSA__URL: ${TSA_URL:-https://freetsa.org/tsr}
+      LEDGER__TSA__QUALIFIED: ${TSA_QUALIFIED:-false}
+      LEDGER__TSA__DISPLAYNAME: ${TSA_DISPLAY_NAME:-FreeTSA (demonstration only)}
+      EVIDENCE__TOOLVERSION: ${PRIORSTATE_VERSION:-0.1.0-dev}
+      EVIDENCE__CACHAINPEMPATH: /etc/priorstate/tsa-chain.pem
+      WEBHOOKS__DEPLOYMENTTOKEN: ${DEPLOYMENT_WEBHOOK_TOKEN:-}
+      AUTHENTICATION__OIDC__ENABLED: ${OIDC_ENABLED:-false}
+      AUTHENTICATION__OIDC__AUTHORITY: ${OIDC_AUTHORITY:-}
+      AUTHENTICATION__OIDC__CLIENTID: ${OIDC_CLIENT_ID:-}
+      AUTHENTICATION__OIDC__CLIENTSECRET: ${OIDC_CLIENT_SECRET:-}
+    volumes:
+      # The API renders evidence protocols by starting a short-lived Chromium container.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - priorstate-render:/var/lib/priorstate/render
+      - ./tsa-chain.pem:/etc/priorstate/tsa-chain.pem:ro
+    networks: [priorstate]
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+      args:
+        DOCKER_GID: ${DOCKER_GID:-999}
+    image: ghcr.io/saschalaabs/priorstate-worker:${PRIORSTATE_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      api: { condition: service_started }
+    environment:
+      ConnectionStrings__Postgres: >-
+        Host=postgres;Database=${POSTGRES_DB:-priorstate};Username=${POSTGRES_USER:-priorstate};Password=${POSTGRES_PASSWORD}
+      STORAGE__SERVICEURL: ${STORAGE_SERVICE_URL:-http://garage:3900}
+      STORAGE__BUCKET: ${STORAGE_BUCKET:-priorstate}
+      STORAGE__ACCESSKEY: ${STORAGE_ACCESS_KEY}
+      STORAGE__SECRETKEY: ${STORAGE_SECRET_KEY}
+      STORAGE__REGION: ${STORAGE_REGION:-garage}
+      LEDGER__TSA__URL: ${TSA_URL:-https://freetsa.org/tsr}
+      LEDGER__TSA__QUALIFIED: ${TSA_QUALIFIED:-false}
+      LEDGER__TSA__DISPLAYNAME: ${TSA_DISPLAY_NAME:-FreeTSA (demonstration only)}
+      CRAWLER__IMAGE: ${CRAWLER_IMAGE:-webrecorder/browsertrix-crawler:1.7.1}
+      CRAWLER__WORKDIRECTORY: /var/lib/priorstate/crawls
+      # The crawl container is started by the host daemon, so its bind mount has to be a host path
+      # rather than a path inside this container.
+      CRAWLER__HOSTWORKDIRECTORY: ${CRAWL_HOST_DIRECTORY:-/var/lib/priorstate/crawls}
+      CRAWLER__WORKERS: ${CRAWLER_WORKERS:-2}
+      CRAWLER__PAGELIMIT: ${CRAWLER_PAGE_LIMIT:-500}
+      CRAWLER__DELAYBETWEENPAGESSECONDS: ${CRAWLER_DELAY_SECONDS:-1}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CRAWL_HOST_DIRECTORY:-/var/lib/priorstate/crawls}:/var/lib/priorstate/crawls
+    networks: [priorstate]
+
+volumes:
+  postgres-data:
+  garage-meta:
+  garage-data:
+  priorstate-render:
+
+networks:
+  priorstate:

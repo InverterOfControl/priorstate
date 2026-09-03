@@ -1,0 +1,76 @@
+{
+  "app": { "name": "PriorState", "tagline": "Tamper-evident website archiving" },
+  "nav": {
+    "projects": "Projects",
+    "timeline": "Timeline",
+    "runs": "Runs",
+    "ledger": "Ledger",
+    "profiles": "Capture profiles",
+    "audit": "Audit log"
+  },
+  "ledger": {
+    "title": "Ledger",
+    "chainLength": "Chain entries",
+    "head": "Head hash",
+    "lastCapture": "Last capture",
+    "awaitingTimestamp": "Awaiting timestamp",
+    "anchors": "Timestamp anchors",
+    "lastAnchoredDay": "Last anchored day",
+    "verify": "Re-derive the whole chain",
+    "verifying": "Re-deriving…",
+    "intact": "Chain intact — {count} entries re-derived from their canonical form.",
+    "broken": "Chain broken at entry {sequence}: {explanation}",
+    "explain": "Verification recomputes every entry hash from the recorded metadata and checks that each entry links to its predecessor. It reads the whole chain rather than a sample."
+  },
+  "storage": {
+    "label": "Storage immutability",
+    "Enforced": "Enforced — a deletion under retention was refused",
+    "ApiPresentUnverified": "Accepted but unverified",
+    "Unsupported": "Not available",
+    "note": "Proof rests on the hash chain and the external timestamp, both of which survive the storage being wiped. Object Lock is defence in depth."
+  },
+  "timestamp": {
+    "qualified": "Qualified provider",
+    "unqualified": "Not a qualified eIDAS provider",
+    "unqualifiedWarning": "Timestamps are coming from a demonstration service. They are technically valid and verifiable, but will not carry a legal dispute. Configure a qualified provider before capturing anything you may need to rely on.",
+    "pending": "Not yet timestamped"
+  },
+  "snapshot": {
+    "title": "Snapshot",
+    "url": "URL",
+    "captured": "Captured",
+    "profile": "Capture profile",
+    "sequence": "Chain position",
+    "entryHash": "Entry hash",
+    "previousHash": "Previous hash",
+    "waczHash": "Archive hash",
+    "replay": "Replay",
+    "conditions": "Capture conditions",
+    "evidence": "Download evidence package",
+    "evidenceHint": "A ZIP containing the archive, the protocol, the timestamp token and a verification script the other side can run themselves.",
+    "notTimestamped": "This snapshot has not been anchored yet. Anchoring runs once a day; an evidence package exported before then could not be verified independently."
+  },
+  "conditions": {
+    "userAgent": "User agent",
+    "viewport": "Viewport",
+    "authenticated": "Authenticated session",
+    "adBlocker": "Ad blocker",
+    "cookieBanner": "Cookie banner",
+    "settle": "Settle time",
+    "chromium": "Chromium",
+    "crawler": "Crawler"
+  },
+  "projects": {
+    "title": "Projects",
+    "none": "No projects yet.",
+    "seeds": "Seed URLs",
+    "schedule": "Schedule",
+    "retention": "Retention",
+    "years": "{count} years",
+    "onDemand": "On demand only",
+    "trigger": "Capture now"
+  },
+  "runs": { "title": "Runs", "trigger": "Trigger", "status": "Status", "queued": "Queued", "snapshots": "Snapshots" },
+  "audit": { "title": "Audit log", "when": "When", "who": "Who", "action": "Action", "subject": "Subject", "detail": "Detail", "note": "Reads are recorded here as well as writes. Entries cannot be edited or deleted." },
+  "common": { "loading": "Loading…", "error": "Something went wrong", "yes": "Yes", "no": "No", "back": "Back" }
+}

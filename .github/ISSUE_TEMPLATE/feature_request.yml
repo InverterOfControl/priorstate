@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest something PriorState should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check the "Deliberately missing features" section of the README first. Requests to
+        delete snapshots, shorten retention retroactively, change the timestamp source for existing
+        entries, or bypass versioned capture profiles will be declined on principle — an archive
+        the operator can edit is worthless as evidence.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the situation, not the solution you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+  - type: checkboxes
+    id: integrity
+    attributes:
+      label: Integrity check
+      options:
+        - label: This does not allow anyone, including the operator, to alter or remove recorded history.
+          required: true

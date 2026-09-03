@@ -1,0 +1,35 @@
+PriorState
+Copyright (C) 2026 Sascha Laabs
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU Affero General Public License, version 3, as published by the Free Software Foundation.
+See the LICENSE file for the full text.
+
+---
+
+This project builds on the following works. PriorState does not vendor their source; it invokes
+or embeds them as distributed by their authors. Their licences apply to them, not to PriorState.
+
+browsertrix-crawler — https://github.com/webrecorder/browsertrix-crawler
+  Copyright Webrecorder Software. Licensed under AGPL-3.0.
+  Used as an unmodified container image to perform capture.
+
+ReplayWeb.page — https://github.com/webrecorder/replayweb.page
+  Copyright Webrecorder Software. Licensed under AGPL-3.0.
+  Embedded in the user interface as a web component for replay.
+
+WACZ specification — https://specs.webrecorder.net/wacz/
+  Webrecorder. The archive format PriorState reads and writes.
+
+Garage — https://git.deuxfleurs.fr/Deuxfleurs/garage
+  Copyright Deuxfleurs. Licensed under AGPL-3.0.
+  Shipped as an unmodified container image as the default S3-compatible object store.
+
+PostgreSQL — https://www.postgresql.org/ (PostgreSQL Licence)
+.NET and ASP.NET Core — https://github.com/dotnet (MIT)
+Vue.js — https://github.com/vuejs/core (MIT)
+Tailwind CSS — https://github.com/tailwindlabs/tailwindcss (MIT)
+shadcn-vue — https://github.com/unovue/shadcn-vue (MIT)
+VitePress — https://github.com/vuejs/vitepress (MIT)
+
+Trademarks and product names mentioned are the property of their respective owners.

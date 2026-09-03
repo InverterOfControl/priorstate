@@ -1,0 +1,13 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.wacz binary
+*.tsr binary
+*.der binary
+
+# Keep verification tooling executable and LF regardless of platform
+*.sh text eol=lf
+LICENSE text eol=lf

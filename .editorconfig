@@ -1,0 +1,40 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+[*.{js,ts,vue,json,jsonc,yml,yaml,css,html}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+indent_size = 2
+
+[*.{sh,bash}]
+indent_size = 2
+
+[*.cs]
+indent_size = 4
+csharp_new_line_before_open_brace = all
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_var_for_built_in_types = false:suggestion
+dotnet_sort_system_directives_first = true
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_diagnostic.CA2007.severity = none
+
+[*.{csproj,props,targets}]
+indent_size = 2
+
+# EF Core scaffolds these. They are generated output that happens to live in the repo, so they are
+# read, not edited, and analyser rules about hand-written style do not apply.
+[**/Migrations/*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.IDE0161.severity = none

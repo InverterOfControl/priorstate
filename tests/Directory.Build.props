@@ -1,0 +1,24 @@
+<Project>
+
+  <!-- Inherit everything from the repository root, then relax what only makes sense for tests. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      CA1707: test names use Method_Behaviour underscores on purpose - they are read in test
+      output, not called from other code.
+      CA1861/CA1861: inline arrays as test data are clearer than shared static fields.
+    -->
+    <!--
+      CA1711: xUnit collection-definition classes conventionally end in "Collection"; the name is
+      the identifier xUnit matches on, so it is not ours to change.
+    -->
+    <NoWarn>$(NoWarn);CA1707;CA1861;CA1711</NoWarn>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Docker.DotNet" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PriorState.Domain\PriorState.Domain.csproj" />
+    <ProjectReference Include="..\PriorState.Storage\PriorState.Storage.csproj" />
+  </ItemGroup>
+</Project>

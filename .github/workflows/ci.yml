@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Every commit must carry a Signed-off-by line. Merging a contribution without provenance would
+  # permanently prevent this project from ever being relicensed, so this gate has no exceptions.
+  dco:
+    name: DCO sign-off
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Check every commit is signed off
+        run: |
+          base='${{ github.event.pull_request.base.sha }}'
+          head='${{ github.event.pull_request.head.sha }}'
+          missing=0
+          for commit in $(git rev-list "$base..$head"); do
+            author="$(git show -s --format='%an <%ae>' "$commit")"
+            if ! git show -s --format='%B' "$commit" | grep -qiE '^Signed-off-by: .+ <.+@.+>'; then
+              echo "::error::Commit $commit by $author has no Signed-off-by line."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Sign off with 'git commit -s'. See CONTRIBUTING.md."
+            exit 1
+          fi
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - run: dotnet restore
+
+      - run: dotnet build --configuration Release --no-restore
+
+      # Includes the integration tests, which start real PostgreSQL containers through
+      # Testcontainers. The append-only guarantee lives in Postgres triggers, so testing it
+      # against anything else would be testing nothing.
+      - name: Test
+        run: dotnet test --configuration Release --no-build --logger 'trx;LogFileName=results.trx' --results-directory ./TestResults
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ./TestResults
+          retention-days: 7
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/ui
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/ui/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - run: npm ci
+      # Fails on dead internal links, so the docs cannot drift away from the pages they reference.
+      - run: npm run docs:build
+
+  compose:
+    name: Compose starts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate compose file
+        working-directory: deploy
+        run: |
+          cp .env.example .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-only-password/' .env
+          docker compose config --quiet
+
+      # The ten-minute first run is a stated promise in the README. Building the images in CI is
+      # what keeps it from quietly becoming false.
+      - name: Build images
+        working-directory: deploy
+        run: |
+          cp .env.example .env
+          sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-only-password/' .env
+          docker compose build api worker

@@ -1,0 +1,50 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+.vs/
+*.nupkg
+TestResults/
+coverage/
+*.coverage
+*.trx
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+.npm/
+npm-debug.log*
+
+# VitePress
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
+# Environment and secrets — never commit these
+.env
+.env.local
+*.pem
+*.key
+!deploy/.env.example
+
+# Local runtime data
+deploy/data/
+*.wacz
+
+# Editors / OS
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Build output of the Vue app, emitted into the API project so one container serves both.
+src/PriorState.Api/wwwroot/
+
+# Local compose overrides and generated env
+deploy/.env

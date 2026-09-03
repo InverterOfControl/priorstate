@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Docker.DotNet" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PriorState.Domain\PriorState.Domain.csproj" />
+    <ProjectReference Include="..\PriorState.Ledger\PriorState.Ledger.csproj" />
+    <ProjectReference Include="..\PriorState.Storage\PriorState.Storage.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- verify.sh is emitted verbatim into every evidence package. -->
+    <EmbeddedResource Include="Resources\verify.sh" />
+    <EmbeddedResource Include="Resources\protocol.html" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>priorstate-api</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PriorState.Domain\PriorState.Domain.csproj" />
+    <ProjectReference Include="..\PriorState.Data\PriorState.Data.csproj" />
+    <ProjectReference Include="..\PriorState.Ledger\PriorState.Ledger.csproj" />
+    <ProjectReference Include="..\PriorState.Storage\PriorState.Storage.csproj" />
+    <ProjectReference Include="..\PriorState.Evidence\PriorState.Evidence.csproj" />
+    <ProjectReference Include="..\PriorState.Crawler\PriorState.Crawler.csproj" />
+  </ItemGroup>
+</Project>
