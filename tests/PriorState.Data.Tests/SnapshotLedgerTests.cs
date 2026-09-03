@@ -77,16 +77,16 @@ public sealed class SnapshotLedgerTests
     }
 
     [Fact]
-    public async Task GetDay_ReturnsOnlyThatUtcDayInChainOrder()
+    public async Task GetUnanchored_ReturnsPendingEntriesInChainOrder()
     {
         await using var db = _postgres.CreateContext();
-        var snapshot = await PostgresFixture.SeedSnapshotAsync(db, "https://example.com/day");
+        var snapshot = await PostgresFixture.SeedSnapshotAsync(db, "https://example.com/pending");
 
-        var day = await new SnapshotLedger(db)
-            .GetDayAsync(DateOnly.FromDateTime(snapshot.CapturedAtUtc.UtcDateTime));
+        var pending = await new SnapshotLedger(db).GetUnanchoredAsync();
 
-        Assert.Contains(day, s => s.Id == snapshot.Id);
-        Assert.Equal(day.OrderBy(s => s.ChainSequence).Select(s => s.Id), day.Select(s => s.Id));
+        Assert.Contains(pending, s => s.Id == snapshot.Id);
+        Assert.All(pending, s => Assert.Null(s.TimestampAnchorId));
+        Assert.Equal(pending.OrderBy(s => s.ChainSequence).Select(s => s.Id), pending.Select(s => s.Id));
     }
 
     [Fact]

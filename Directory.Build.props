@@ -17,7 +17,7 @@
     <Authors>Sascha Laabs</Authors>
     <Copyright>Copyright (C) 2026 Sascha Laabs</Copyright>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/saschalaabs/priorstate</RepositoryUrl>
+    <RepositoryUrl>https://github.com/InverterOfControl/priorstate</RepositoryUrl>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

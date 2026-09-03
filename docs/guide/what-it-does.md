@@ -3,20 +3,21 @@
 PriorState records what a visitor actually saw on a page at a point in time, and makes that
 record defensible later to someone who has every reason to doubt it.
 
-## Why Git is not enough
+## What a snapshot captures
 
-Git answers "which code was deployed". Between that and what a visitor saw sit:
+A page as a visitor receives it is assembled at request time, out of:
 
 - CMS content from the database
 - feature flags, A/B tests, personalisation
 - embedded third-party content
 - prices and data from backend systems
 
-And Git is rewritable by design — force-push, rebase, moved tags. Without signed commits,
-protected refs and external timestamps, a repository is a history, not a proof.
+PriorState records the rendered result — what was actually served and displayed — rather than the
+parts it was assembled from. Once a page changes, that state exists nowhere else.
 
-PriorState keeps Git in the picture through a **deployment ledger** that links a commit SHA to the
-snapshot taken after it deployed, and adds the rendered state Git never had.
+Captures can also be tied to a release. The **deployment ledger** records a commit SHA against the
+snapshot taken after that deployment went live, so a change in the rendered page can be traced
+back to the release that produced it.
 
 ## The four layers
 

@@ -14,7 +14,7 @@ hero:
       link: /guide/limits
     - theme: alt
       text: GitHub
-      link: https://github.com/saschalaabs/priorstate
+      link: https://github.com/InverterOfControl/priorstate
 
 features:
   - title: Capture, not screenshots
@@ -29,9 +29,9 @@ features:
 
 ## The problem this solves
 
-Git records which *code* was deployed. Between that and what a visitor actually saw sit CMS
-content, feature flags, A/B tests, third-party embeds and backend-driven prices. Git is also
-rewritable by design — force-push, rebase, moved tags. A repository is a history, not a proof.
+A page as a visitor receives it is assembled at request time, out of CMS content, feature flags,
+A/B tests, third-party embeds and prices from backend systems. Once it changes, the state it was
+in is gone, and reconstructing it afterwards from the parts is guesswork.
 
 PriorState answers the questions a dispute actually turns on:
 

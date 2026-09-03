@@ -31,8 +31,8 @@ is "when was this changed", the capture interval is the resolution of your answe
 
 > …
 
-**On deployment as well?** The deployment webhook links a commit to the snapshot taken after it
-went live, which is what closes the gap between code history and rendered state.
+**On deployment as well?** The deployment webhook records a commit against the snapshot taken
+after that release went live, so a change in the page can be traced back to what produced it.
 
 > …
 

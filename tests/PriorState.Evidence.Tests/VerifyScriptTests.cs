@@ -69,6 +69,22 @@ public sealed class VerifyScriptTests
     }
 
     [Fact]
+    public void VerifyScript_PassesTokenInBecauseTheStoredTokenIsBare()
+    {
+        // The package stores a bare TimeStampToken, not a TimeStampResp. Without -token_in openssl
+        // fails with an ASN.1 tag error, and the script reports a valid timestamp as invalid — the
+        // worst possible direction for this particular check to fail in.
+        //
+        // Asserting on the whole `ts -verify` invocation rather than on the flag alone: -token_in
+        // already appears further down in the line that prints the asserted time, so a bare
+        // Contains check passes even when the verification itself has lost the flag.
+        var verifyInvocation = VerifyScript[VerifyScript.IndexOf("openssl ts -verify", StringComparison.Ordinal)..];
+        verifyInvocation = verifyInvocation[..verifyInvocation.IndexOf("; then", StringComparison.Ordinal)];
+
+        Assert.Contains("-token_in", verifyInvocation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VerifyScript_UsesTheSameMerkleDomainSeparationAsTheLedger()
     {
         // RFC 6962 prefixes: 0x00 for leaves, 0x01 for internal nodes. If these drift apart from

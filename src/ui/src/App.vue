@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { api, type LedgerStatus } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth'
 
 const { t, locale, availableLocales } = useI18n()
+const auth = useAuthStore()
+const router = useRouter()
 const status = ref<LedgerStatus | null>(null)
 
 const nav = [
@@ -20,13 +24,26 @@ function switchLocale(value: string) {
   localStorage.setItem('priorstate.locale', value)
 }
 
-onMounted(async () => {
+async function signOut() {
+  await auth.signOut()
+  await router.replace({ name: 'login' })
+}
+
+async function loadStatus() {
+  if (!auth.authenticated) {
+    status.value = null
+    return
+  }
+
   try {
     status.value = await api.get<LedgerStatus>('/api/ledger/status')
   } catch {
-    // Not signed in yet, or the API is still starting. The banner simply does not appear.
+    // The banner simply does not appear; the page itself will surface the error.
   }
-})
+}
+
+watch(() => auth.authenticated, loadStatus)
+onMounted(loadStatus)
 </script>
 
 <template>
@@ -34,7 +51,8 @@ onMounted(async () => {
     <header class="border-b border-rule bg-paper-raised">
       <div class="mx-auto flex max-w-6xl items-baseline gap-6 px-6 py-3">
         <RouterLink to="/" class="font-semibold tracking-tight">{{ t('app.name') }}</RouterLink>
-        <nav class="flex flex-1 gap-1 text-sm">
+
+        <nav v-if="auth.authenticated" class="flex flex-1 gap-1 text-sm">
           <RouterLink
             v-for="item in nav"
             :key="item.name"
@@ -45,17 +63,28 @@ onMounted(async () => {
             {{ t(`nav.${item.name}`) }}
           </RouterLink>
         </nav>
-        <div class="flex gap-1 text-xs">
-          <button
-            v-for="value in availableLocales"
-            :key="value"
-            type="button"
-            class="rounded px-1.5 py-0.5 uppercase transition-colors"
-            :class="locale === value ? 'text-ink' : 'text-ink-muted hover:text-ink'"
-            @click="switchLocale(value)"
-          >
-            {{ value }}
-          </button>
+        <span v-else class="flex-1" />
+
+        <div class="flex items-center gap-3 text-xs">
+          <template v-if="auth.authenticated">
+            <span class="text-ink-muted">{{ auth.userName }}</span>
+            <button type="button" class="text-ink-muted transition-colors hover:text-ink" @click="signOut">
+              {{ t('auth.signOut') }}
+            </button>
+          </template>
+
+          <div class="flex gap-1">
+            <button
+              v-for="value in availableLocales"
+              :key="value"
+              type="button"
+              class="rounded px-1.5 py-0.5 uppercase transition-colors"
+              :class="locale === value ? 'text-ink' : 'text-ink-muted hover:text-ink'"
+              @click="switchLocale(value)"
+            >
+              {{ value }}
+            </button>
+          </div>
         </div>
       </div>
     </header>

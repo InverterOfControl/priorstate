@@ -42,4 +42,7 @@ public enum AuditAction
     UserSignedIn = 8,
     UserSignInFailed = 9,
     ChainVerificationRun = 10,
+    UserSignedOut = 11,
+    UserAccountCreated = 12,
+    TimestampAnchorCreated = 13,
 }

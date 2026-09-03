@@ -110,18 +110,14 @@ public sealed class SnapshotLedger
         return HashChain.Verify(snapshots);
     }
 
-    /// <summary>Entry hashes for one UTC day, in chain order, ready for the Merkle root.</summary>
-    public async Task<IReadOnlyList<Snapshot>> GetDayAsync(
-        DateOnly utcDay,
-        CancellationToken cancellationToken = default)
-    {
-        var start = new DateTimeOffset(utcDay.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
-        var end = start.AddDays(1);
-
-        return await _db.Snapshots
+    /// <summary>
+    /// Entries not yet covered by a timestamp anchor, in chain order. This, rather than a calendar
+    /// day, is what anchoring works from.
+    /// </summary>
+    public async Task<IReadOnlyList<Snapshot>> GetUnanchoredAsync(CancellationToken cancellationToken = default) =>
+        await _db.Snapshots
             .AsNoTracking()
-            .Where(s => s.CapturedAtUtc >= start && s.CapturedAtUtc < end)
+            .Where(s => s.TimestampAnchorId == null)
             .OrderBy(s => s.ChainSequence)
             .ToListAsync(cancellationToken);
-    }
 }

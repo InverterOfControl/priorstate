@@ -1,5 +1,8 @@
 {
-  "app": { "name": "PriorState", "tagline": "Revisionssichere Website-Archivierung" },
+  "app": {
+    "name": "PriorState",
+    "tagline": "Revisionssichere Website-Archivierung"
+  },
   "nav": {
     "projects": "Projekte",
     "timeline": "Zeitleiste",
@@ -15,12 +18,18 @@
     "lastCapture": "Letzte Erfassung",
     "awaitingTimestamp": "Ohne Zeitstempel",
     "anchors": "Zeitstempel-Anker",
-    "lastAnchoredDay": "Zuletzt gestempelter Tag",
     "verify": "Gesamte Kette nachrechnen",
     "verifying": "Wird nachgerechnet…",
     "intact": "Kette unversehrt — {count} Einträge aus ihrer kanonischen Form nachgerechnet.",
     "broken": "Kette bei Eintrag {sequence} unterbrochen: {explanation}",
-    "explain": "Die Prüfung berechnet jeden Eintrags-Hash aus den erfassten Angaben neu und prüft, ob jeder Eintrag auf seinen Vorgänger verweist. Geprüft wird die gesamte Kette, keine Stichprobe."
+    "explain": "Die Prüfung berechnet jeden Eintrags-Hash aus den erfassten Angaben neu und prüft, ob jeder Eintrag auf seinen Vorgänger verweist. Geprüft wird die gesamte Kette, keine Stichprobe.",
+    "lastAnchoredAt": "Zuletzt verankert um",
+    "anchorTitle": "Zeitstempel-Verankerung",
+    "anchorExplain": "Die planmäßige Verankerung läuft stündlich und umfasst vollständige UTC-Tage; ein Token eines qualifizierten Anbieters kostet damit eine Anfrage pro Tag statt eine pro Erfassung. „Jetzt verankern“ umfasst alles Ausstehende einschließlich heutiger Erfassungen — sinnvoll, wenn ein Beweispaket noch heute gebraucht wird.",
+    "anchorNow": "Ausstehende Einträge jetzt verankern",
+    "anchoring": "Zeitstempeldienst wird kontaktiert…",
+    "anchored": "{count} Einträge verankert. Der Dienst hat sie um {time} bescheinigt.",
+    "nothingPending": "Nichts ausstehend — alle Einträge sind bereits verankert."
   },
   "storage": {
     "label": "Unveränderbarkeit des Speichers",
@@ -68,9 +77,66 @@
     "retention": "Aufbewahrung",
     "years": "{count} Jahre",
     "onDemand": "Nur auf Anforderung",
-    "trigger": "Jetzt erfassen"
+    "trigger": "Jetzt erfassen",
+    "new": "Neues Projekt",
+    "created": "Projekt „{name}“ wurde angelegt.",
+    "queued": "Erfassung für „{name}“ eingereiht. Der Worker übernimmt sie in Kürze; beim ersten Lauf wird zusätzlich das Crawler-Image geladen, das kann einige Minuten dauern.",
+    "form": {
+      "name": "Name",
+      "seedUrls": "Start-URLs",
+      "seedUrlsHint": "Eine pro Zeile. Von diesen Seiten aus beginnt die Erfassung.",
+      "scope": "Umfang (optional)",
+      "include": "Links verfolgen, die beginnen mit",
+      "exclude": "Links nie verfolgen, die beginnen mit",
+      "scopeHint": "URL-Präfixe, eines pro Zeile. Leer lassen, um nur die Start-URLs selbst zu erfassen. Das Archivieren fremder Seiten ist technisch identisch, rechtlich aber eine andere Frage — höflich crawlen und vorher Rat einholen.",
+      "schedule": "Zeitplan (optional)",
+      "scheduleHint": "Cron-Ausdruck, ausgewertet in UTC. Leer bedeutet nur auf Anforderung. Beispiel: 0 3 * * * ist täglich um 03:00 UTC.",
+      "retention": "Aufbewahrung (Jahre)",
+      "retentionWarning": "Kann später verlängert, aber nie verkürzt werden.",
+      "profile": "Erfassungsprofil",
+      "profileDefault": "Vorgabe der Instanz",
+      "profileHint": "Legt die Browser-Einstellungen für jede Erfassung dieses Projekts fest und wird in jedem Beweispaket benannt.",
+      "needSeed": "Mindestens eine Start-URL ist erforderlich.",
+      "create": "Projekt anlegen",
+      "cancel": "Abbrechen"
+    }
   },
-  "runs": { "title": "Läufe", "trigger": "Auslöser", "status": "Status", "queued": "Eingereiht", "snapshots": "Erfassungen" },
-  "audit": { "title": "Zugriffsprotokoll", "when": "Zeitpunkt", "who": "Wer", "action": "Aktion", "subject": "Gegenstand", "detail": "Detail", "note": "Auch Lesezugriffe werden protokolliert, nicht nur Änderungen. Einträge sind weder änderbar noch löschbar." },
-  "common": { "loading": "Wird geladen…", "error": "Etwas ist schiefgelaufen", "yes": "Ja", "no": "Nein", "back": "Zurück" }
+  "runs": {
+    "title": "Läufe",
+    "trigger": "Auslöser",
+    "status": "Status",
+    "queued": "Eingereiht",
+    "snapshots": "Erfassungen"
+  },
+  "audit": {
+    "title": "Zugriffsprotokoll",
+    "when": "Zeitpunkt",
+    "who": "Wer",
+    "action": "Aktion",
+    "subject": "Gegenstand",
+    "detail": "Detail",
+    "note": "Auch Lesezugriffe werden protokolliert, nicht nur Änderungen. Einträge sind weder änderbar noch löschbar."
+  },
+  "common": {
+    "loading": "Wird geladen…",
+    "error": "Etwas ist schiefgelaufen",
+    "yes": "Ja",
+    "no": "Nein",
+    "back": "Zurück"
+  },
+  "auth": {
+    "signInTitle": "Anmelden",
+    "signInHint": "Dieses Archiv ist nicht öffentlich. Zugriffe werden Ihrem Konto zugeordnet und protokolliert.",
+    "setupTitle": "Erstes Konto anlegen",
+    "setupHint": "Es besteht noch kein Konto. Das hier angelegte wird der erste Benutzer; danach können weitere Konten nur noch von angemeldeten Benutzern angelegt werden.",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "passwordRule": "Mindestens 12 Zeichen.",
+    "signIn": "Anmelden",
+    "createAccount": "Konto anlegen",
+    "working": "Wird ausgeführt…",
+    "signOut": "Abmelden",
+    "badCredentials": "Diese Kombination aus E-Mail und Passwort wurde nicht akzeptiert.",
+    "accessLogged": "Das Anzeigen einer Erfassung, die Wiedergabe eines Archivs und die Erzeugung eines Beweispakets werden im Zugriffsprotokoll dem jeweiligen Konto zugeordnet."
+  }
 }

@@ -126,21 +126,23 @@ public static class ArchiveEndpoints
             if (snapshot.TimestampAnchor is not { } anchor)
             {
                 return Results.Problem(
-                    "This snapshot has not been timestamped yet. Anchoring runs once a day; a package "
-                    + "exported before then could not be verified independently, so none is produced.",
+                    "This snapshot has not been timestamped yet, so a package exported now could not be "
+                    + "verified independently and none is produced. Scheduled anchoring covers complete "
+                    + "days; to anchor everything pending right now, including today, POST to "
+                    + "/api/ledger/anchor.",
                     statusCode: 409);
             }
 
-            // The audit path needs the day's other entries, in chain order.
-            var day = await db.Snapshots
+            // The audit path needs the other entries under the same anchor, in chain order.
+            var covered = await db.Snapshots
                 .AsNoTracking()
                 .Where(s => s.TimestampAnchorId == anchor.Id)
                 .OrderBy(s => s.ChainSequence)
                 .Select(s => new { s.Id, s.EntryHash })
                 .ToListAsync(ct);
 
-            var leafIndex = day.FindIndex(e => e.Id == id);
-            var hashes = day.ConvertAll(e => e.EntryHash);
+            var leafIndex = covered.FindIndex(e => e.Id == id);
+            var hashes = covered.ConvertAll(e => e.EntryHash);
 
             var request = new EvidencePackageRequest
             {
@@ -178,7 +180,7 @@ public static class ArchiveEndpoints
             var unanchored = await db.Snapshots.CountAsync(s => s.TimestampAnchorId == null, ct);
             var anchors = await db.TimestampAnchors.CountAsync(ct);
             var lastAnchor = await db.TimestampAnchors.AsNoTracking()
-                .OrderByDescending(a => a.CoversDateUtc)
+                .OrderByDescending(a => a.LastChainSequence)
                 .FirstOrDefaultAsync(ct);
 
             return new LedgerStatus(
@@ -187,9 +189,32 @@ public static class ArchiveEndpoints
                 tail?.CapturedAtUtc,
                 unanchored,
                 anchors,
-                lastAnchor?.CoversDateUtc,
+                lastAnchor?.TsaGeneralizedTime,
                 lastAnchor?.QualifiedProvider ?? false,
                 storage.WormCapability);
+        });
+
+        // Anchors everything pending, including entries captured minutes ago. The scheduled job
+        // leaves the current day alone to keep timestamp-authority costs bounded; this is the
+        // escape hatch for an operator who needs an evidence package today and has decided the
+        // extra token is worth it. Same code path as the scheduled run.
+        group.MapPost("/anchor", async (
+            TimestampAnchorService anchors,
+            AuditLog audit,
+            CancellationToken ct) =>
+        {
+            var result = await anchors.AnchorPendingAsync(includeToday: true, ct);
+
+            await audit.RecordAsync(
+                AuditAction.TimestampAnchorCreated,
+                "Ledger",
+                result.AnchorId?.ToString(),
+                result.DidAnchor
+                    ? $"{result.EntriesAnchored} entries under root {result.MerkleRoot}"
+                    : "nothing pending",
+                ct);
+
+            return Results.Ok(result);
         });
 
         // Re-derives the chain from scratch. Deliberately not sampled: a verification that checks
@@ -230,6 +255,6 @@ public sealed record LedgerStatus(
     DateTimeOffset? LastCapture,
     int SnapshotsAwaitingTimestamp,
     int TimestampAnchors,
-    DateOnly? LastAnchoredDay,
+    DateTimeOffset? LastAnchoredAt,
     bool LastAnchorQualified,
     WormSupport StorageWorm);

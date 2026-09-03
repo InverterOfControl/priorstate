@@ -86,16 +86,18 @@ public sealed partial class ChromiumProtocolRenderer : IProtocolRenderer, IDispo
                 [
                     "chromium-browser --headless --disable-gpu --no-sandbox "
                     + "--run-all-compositor-stages-before-draw --virtual-time-budget=4000 "
-                    + "--no-pdf-header-footer --print-to-pdf=/render/protocol.pdf "
-                    + "file:///render/protocol.html "
+                    + $"--no-pdf-header-footer --print-to-pdf=/priorstate-render/{job}/protocol.pdf "
+                    + $"file:///priorstate-render/{job}/protocol.html "
                     + "|| chromium --headless --disable-gpu --no-sandbox "
                     + "--run-all-compositor-stages-before-draw --virtual-time-budget=4000 "
-                    + "--no-pdf-header-footer --print-to-pdf=/render/protocol.pdf "
-                    + "file:///render/protocol.html",
+                    + $"--no-pdf-header-footer --print-to-pdf=/priorstate-render/{job}/protocol.pdf "
+                    + $"file:///priorstate-render/{job}/protocol.html",
                 ],
                 HostConfig = new HostConfig
                 {
-                    Binds = [$"{Path.Combine(_options.HostWorkDirectory, job)}:/render"],
+                    // The job subdirectory is addressed inside the mount, not by composing a host
+                    // path, so this works whether the source is a named volume or a host path.
+                    Binds = [$"{_options.RenderMountSource}:/priorstate-render"],
                     // The protocol is generated from our own template and our own data. It has no
                     // reason to reach the network, so it does not get to.
                     NetworkMode = "none",

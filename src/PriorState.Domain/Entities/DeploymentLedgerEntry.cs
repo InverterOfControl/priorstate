@@ -1,8 +1,8 @@
 namespace PriorState.Domain.Entities;
 
 /// <summary>
-/// The bridge between "which code was deployed" and "what a visitor saw" — the gap that makes a
-/// Git history insufficient on its own.
+/// Ties a release to the snapshot taken after it went live, so a change in the rendered page can
+/// be traced back to the deployment that produced it.
 /// </summary>
 public sealed class DeploymentLedgerEntry
 {

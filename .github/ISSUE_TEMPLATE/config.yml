@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/saschalaabs/priorstate/security/advisories/new
+    url: https://github.com/InverterOfControl/priorstate/security/advisories/new
     about: Report privately, never as a public issue. See SECURITY.md.
   - name: Question or idea
-    url: https://github.com/saschalaabs/priorstate/discussions
+    url: https://github.com/InverterOfControl/priorstate/discussions
     about: For usage questions and open-ended discussion.

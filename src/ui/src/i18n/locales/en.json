@@ -1,5 +1,8 @@
 {
-  "app": { "name": "PriorState", "tagline": "Tamper-evident website archiving" },
+  "app": {
+    "name": "PriorState",
+    "tagline": "Tamper-evident website archiving"
+  },
   "nav": {
     "projects": "Projects",
     "timeline": "Timeline",
@@ -15,12 +18,18 @@
     "lastCapture": "Last capture",
     "awaitingTimestamp": "Awaiting timestamp",
     "anchors": "Timestamp anchors",
-    "lastAnchoredDay": "Last anchored day",
     "verify": "Re-derive the whole chain",
     "verifying": "Re-deriving…",
     "intact": "Chain intact — {count} entries re-derived from their canonical form.",
     "broken": "Chain broken at entry {sequence}: {explanation}",
-    "explain": "Verification recomputes every entry hash from the recorded metadata and checks that each entry links to its predecessor. It reads the whole chain rather than a sample."
+    "explain": "Verification recomputes every entry hash from the recorded metadata and checks that each entry links to its predecessor. It reads the whole chain rather than a sample.",
+    "lastAnchoredAt": "Last anchored at",
+    "anchorTitle": "Timestamp anchoring",
+    "anchorExplain": "Scheduled anchoring runs hourly and covers complete UTC days, so a token from a qualified authority costs one request per day rather than one per snapshot. Anchoring now covers everything pending, including captures from today — use it when you need an evidence package before tomorrow.",
+    "anchorNow": "Anchor pending entries now",
+    "anchoring": "Contacting the timestamp authority…",
+    "anchored": "Anchored {count} entries. The authority attested them at {time}.",
+    "nothingPending": "Nothing pending — every entry is already anchored."
   },
   "storage": {
     "label": "Storage immutability",
@@ -68,9 +77,66 @@
     "retention": "Retention",
     "years": "{count} years",
     "onDemand": "On demand only",
-    "trigger": "Capture now"
+    "trigger": "Capture now",
+    "new": "New project",
+    "created": "Project “{name}” created.",
+    "queued": "Capture queued for “{name}”. The worker picks it up shortly; the first run also pulls the crawler image, so it can take a few minutes.",
+    "form": {
+      "name": "Name",
+      "seedUrls": "Seed URLs",
+      "seedUrlsHint": "One per line. These are the pages the crawl starts from.",
+      "scope": "Scope (optional)",
+      "include": "Follow links matching",
+      "exclude": "Never follow links matching",
+      "scopeHint": "URL prefixes, one per line. Leave empty to capture only the seed URLs themselves. Archiving sites that are not yours is technically identical and legally a different question — crawl politely and take advice first.",
+      "schedule": "Schedule (optional)",
+      "scheduleHint": "Cron expression, evaluated in UTC. Empty means on demand only. Example: 0 3 * * * is daily at 03:00 UTC.",
+      "retention": "Retention (years)",
+      "retentionWarning": "Can be extended later, never shortened.",
+      "profile": "Capture profile",
+      "profileDefault": "Instance default",
+      "profileHint": "Fixes the browser settings for every capture in this project, and is named in every evidence package.",
+      "needSeed": "At least one seed URL is required.",
+      "create": "Create project",
+      "cancel": "Cancel"
+    }
   },
-  "runs": { "title": "Runs", "trigger": "Trigger", "status": "Status", "queued": "Queued", "snapshots": "Snapshots" },
-  "audit": { "title": "Audit log", "when": "When", "who": "Who", "action": "Action", "subject": "Subject", "detail": "Detail", "note": "Reads are recorded here as well as writes. Entries cannot be edited or deleted." },
-  "common": { "loading": "Loading…", "error": "Something went wrong", "yes": "Yes", "no": "No", "back": "Back" }
+  "runs": {
+    "title": "Runs",
+    "trigger": "Trigger",
+    "status": "Status",
+    "queued": "Queued",
+    "snapshots": "Snapshots"
+  },
+  "audit": {
+    "title": "Audit log",
+    "when": "When",
+    "who": "Who",
+    "action": "Action",
+    "subject": "Subject",
+    "detail": "Detail",
+    "note": "Reads are recorded here as well as writes. Entries cannot be edited or deleted."
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "yes": "Yes",
+    "no": "No",
+    "back": "Back"
+  },
+  "auth": {
+    "signInTitle": "Sign in",
+    "signInHint": "This archive is not public. Access is recorded against your account.",
+    "setupTitle": "Create the first account",
+    "setupHint": "No account exists yet. The one you create here becomes the first user; afterwards, only a signed-in user can add further accounts.",
+    "email": "Email",
+    "password": "Password",
+    "passwordRule": "At least 12 characters.",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "working": "Working…",
+    "signOut": "Sign out",
+    "badCredentials": "That email and password combination was not accepted.",
+    "accessLogged": "Viewing a snapshot, replaying an archive and exporting an evidence package are all recorded in the audit log against the account that did them."
+  }
 }

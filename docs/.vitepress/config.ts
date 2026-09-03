@@ -22,7 +22,7 @@ export default defineConfig({
       { text: 'Operations', link: '/operations/storage' },
       { text: 'Reference', link: '/reference/canonical-form' },
       { text: 'Rechtliches (DE)', link: '/legal/verfahrensdokumentation' },
-      { text: 'GitHub', link: 'https://github.com/saschalaabs/priorstate' },
+      { text: 'GitHub', link: 'https://github.com/InverterOfControl/priorstate' },
     ],
 
     sidebar: [
@@ -61,7 +61,7 @@ export default defineConfig({
       },
     ],
 
-    socialLinks: [{ icon: 'github', link: 'https://github.com/saschalaabs/priorstate' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/InverterOfControl/priorstate' }],
 
     footer: {
       message: 'AGPL-3.0-only. Not legal advice.',
@@ -71,7 +71,7 @@ export default defineConfig({
     search: { provider: 'local' },
 
     editLink: {
-      pattern: 'https://github.com/saschalaabs/priorstate/edit/main/docs/:path',
+      pattern: 'https://github.com/InverterOfControl/priorstate/edit/main/docs/:path',
       text: 'Edit this page on GitHub',
     },
   },

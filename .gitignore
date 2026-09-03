@@ -48,3 +48,7 @@ src/PriorState.Api/wwwroot/
 
 # Local compose overrides and generated env
 deploy/.env
+
+# Internal strategy notes. The concept document discusses the employer arrangement, the naming
+# decision and commercial options, none of which belong in a public repository.
+konzept-website-revisionssicherheit.md

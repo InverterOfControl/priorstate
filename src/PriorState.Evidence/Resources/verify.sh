@@ -22,7 +22,7 @@
 # Usage:   sh verify.sh              (from inside the unpacked package)
 # Exit:    0 = every check passed, 1 = a check failed, 2 = the package is unusable
 #
-# Licence: AGPL-3.0-only, part of PriorState. https://github.com/saschalaabs/priorstate
+# Licence: AGPL-3.0-only, part of PriorState. https://github.com/InverterOfControl/priorstate
 
 set -eu
 
@@ -154,10 +154,15 @@ say ""
 # If tsa-chain.pem is absent the operator did not ship the authority's certificates; obtain them
 # from the authority named in the protocol and re-run with -CAfile pointing at them.
 
+# token.tsr holds a bare TimeStampToken (the signed CMS structure), not a full TimeStampResp,
+# which is why -token_in is needed below. Without it openssl looks for a response wrapper that
+# is not there and fails with an ASN.1 tag error rather than anything about the signature —
+# reporting a perfectly valid timestamp as invalid.
 say "4. Timestamp"
 if [ -f timestamp/tsa-chain.pem ]; then
   if openssl ts -verify \
         -digest "$MERKLE_ROOT" \
+        -token_in \
         -in timestamp/token.tsr \
         -CAfile timestamp/tsa-chain.pem >/dev/null 2>&1; then
     pass "the timestamp token is valid and covers the root"
@@ -165,13 +170,13 @@ if [ -f timestamp/tsa-chain.pem ]; then
     fail "the timestamp token did NOT verify against timestamp/tsa-chain.pem."
     say  "          re-run manually for the full reason:"
     say  "          openssl ts -verify -digest $MERKLE_ROOT \\"
-    say  "            -in timestamp/token.tsr -CAfile timestamp/tsa-chain.pem"
+    say  "            -in timestamp/token.tsr -token_in -CAfile timestamp/tsa-chain.pem"
   fi
 else
   fail "timestamp/tsa-chain.pem is missing, so the signature cannot be checked offline."
   say  "          obtain the authority's certificate chain and re-run:"
   say  "          openssl ts -verify -digest $MERKLE_ROOT \\"
-  say  "            -in timestamp/token.tsr -CAfile <chain.pem>"
+  say  "            -in timestamp/token.tsr -token_in -CAfile <chain.pem>"
 fi
 
 say ""

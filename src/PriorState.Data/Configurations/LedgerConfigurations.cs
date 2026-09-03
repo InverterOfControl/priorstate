@@ -11,7 +11,8 @@ internal sealed class TimestampAnchorConfiguration : IEntityTypeConfiguration<Ti
         builder.ToTable("timestamp_anchors");
         builder.HasKey(a => a.Id);
 
-        builder.Property(a => a.CoversDateUtc).HasColumnType("date").IsRequired();
+        builder.Property(a => a.CoversFromUtc).IsRequired();
+        builder.Property(a => a.CoversUntilUtc).IsRequired();
         builder.Property(a => a.MerkleRoot).IsRequired();
 
         // The DER token, byte for byte as the authority returned it. Never re-encoded: a
@@ -21,7 +22,11 @@ internal sealed class TimestampAnchorConfiguration : IEntityTypeConfiguration<Ti
         builder.Property(a => a.TsaUrl).HasMaxLength(500).IsRequired();
         builder.Property(a => a.QualifiedProvider).IsRequired();
 
-        builder.HasIndex(a => a.CoversDateUtc).IsUnique().HasDatabaseName("ix_timestamp_anchors_covers_date");
+        // Deliberately not unique. One anchor per day was the original design and it created a
+        // trap: a capture starting at 23:59 is dated to a day that may already be closed, leaving
+        // it permanently unanchorable. Anchors cover sequence ranges, and a day may have several.
+        builder.HasIndex(a => a.CoversFromUtc).HasDatabaseName("ix_timestamp_anchors_covers_from");
+        builder.HasIndex(a => a.FirstChainSequence).HasDatabaseName("ix_timestamp_anchors_first_sequence");
     }
 }
 

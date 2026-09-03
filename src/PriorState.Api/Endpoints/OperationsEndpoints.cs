@@ -106,7 +106,7 @@ public static class OperationsEndpoints
                 PriorStateDbContext db,
                 CancellationToken ct) =>
             {
-                var expected = configuration["Webhooks:DeploymentToken"];
+                string? expected = configuration["Webhooks:DeploymentToken"];
                 if (string.IsNullOrWhiteSpace(expected) || !CryptographicEquals(token, expected))
                 {
                     return Results.Unauthorized();

@@ -1,7 +1,7 @@
 # Quickstart
 
 Ten minutes, one command. If it takes longer than that, please
-[open an issue](https://github.com/saschalaabs/priorstate/issues) — the setup being fast is a
+[open an issue](https://github.com/InverterOfControl/priorstate/issues) — the setup being fast is a
 feature, not a nicety.
 
 ## Requirements
@@ -11,7 +11,7 @@ Docker with Compose. Nothing else.
 ## Start it
 
 ```bash
-git clone https://github.com/saschalaabs/priorstate.git
+git clone https://github.com/InverterOfControl/priorstate.git
 cd priorstate/deploy
 cp .env.example .env
 ```

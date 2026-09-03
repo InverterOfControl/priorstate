@@ -23,6 +23,11 @@ RUN dotnet publish src/PriorState.Api/PriorState.Api.csproj -c Release -o /app -
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS final
 WORKDIR /app
 
+# The API renders the evidence protocol by starting a short-lived Chromium container, so like
+# the worker it needs to reach the Docker socket. The socket's group id differs between hosts,
+# so it is passed in at build time. Find it with:  stat -c '%g' /var/run/docker.sock
+ARG DOCKER_GID=999
+
 # curl is here only for the container health check. The API itself makes no outbound calls that
 # need it — timestamping goes through HttpClient.
 RUN apt-get update \
@@ -30,6 +35,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 2000 priorstate \
  && useradd --system --uid 2000 --gid priorstate --create-home priorstate \
+ && (getent group ${DOCKER_GID} || groupadd --gid ${DOCKER_GID} dockerhost) \
+ && usermod -aG $(getent group ${DOCKER_GID} | cut -d: -f1) priorstate \
  && mkdir -p /var/lib/priorstate/render /var/lib/priorstate/keys \
  && chown -R priorstate:priorstate /var/lib/priorstate
 

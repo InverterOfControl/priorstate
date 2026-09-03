@@ -3,18 +3,27 @@ using PriorState.Domain.ValueObjects;
 namespace PriorState.Domain.Entities;
 
 /// <summary>
-/// A Merkle root over one day of ledger entries, timestamped by an RFC-3161 authority.
+/// A Merkle root over a contiguous run of ledger entries, timestamped by an RFC-3161 authority.
 ///
 /// This is what makes the archive provable to someone who does not trust the operator. The chain
 /// alone shows internal consistency; the token shows that this exact chain state existed before a
 /// moment attested by a third party. It survives the database and the bucket being wiped.
+///
+/// An anchor covers a range of chain sequences, not a calendar day. Scheduled anchoring still runs
+/// once a day — one token from a qualified authority costs money, and batching a whole day keeps
+/// that bounded — but nothing in the model depends on that. Several anchors may cover the same
+/// day, which is what makes on-demand anchoring possible and what stops a capture that straddles
+/// midnight from landing in a day that has already been closed.
 /// </summary>
 public sealed class TimestampAnchor
 {
     public Guid Id { get; set; } = Guid.CreateVersion7();
 
-    /// <summary>The UTC day covered.</summary>
-    public required DateOnly CoversDateUtc { get; set; }
+    /// <summary>Capture time of the earliest entry covered.</summary>
+    public required DateTimeOffset CoversFromUtc { get; set; }
+
+    /// <summary>Capture time of the latest entry covered.</summary>
+    public required DateTimeOffset CoversUntilUtc { get; set; }
 
     public required long FirstChainSequence { get; set; }
 

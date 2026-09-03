@@ -78,7 +78,11 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.api
-    image: ghcr.io/saschalaabs/priorstate-api:${PRIORSTATE_VERSION:-latest}
+      args:
+        # The API starts a Chromium container to render evidence protocols, so it needs the same
+        # socket access as the worker.
+        DOCKER_GID: ${DOCKER_GID:-999}
+    image: ghcr.io/inverterofcontrol/priorstate-api:${PRIORSTATE_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       postgres: { condition: service_healthy }
@@ -98,6 +102,11 @@ services:
       LEDGER__TSA__DISPLAYNAME: ${TSA_DISPLAY_NAME:-FreeTSA (demonstration only)}
       EVIDENCE__TOOLVERSION: ${PRIORSTATE_VERSION:-0.1.0-dev}
       EVIDENCE__CACHAINPEMPATH: /etc/priorstate/tsa-chain.pem
+      EVIDENCE__WORKDIRECTORY: /var/lib/priorstate/render
+      # What the renderer container mounts. The daemon resolves this, not the API, so it is a
+      # volume name rather than a path inside the API container. A named volume also sidesteps the
+      # ownership problem a host directory would create for a process running as a non-root uid.
+      EVIDENCE__RENDERMOUNTSOURCE: ${RENDER_VOLUME:-priorstate-render}
       WEBHOOKS__DEPLOYMENTTOKEN: ${DEPLOYMENT_WEBHOOK_TOKEN:-}
       AUTHENTICATION__OIDC__ENABLED: ${OIDC_ENABLED:-false}
       AUTHENTICATION__OIDC__AUTHORITY: ${OIDC_AUTHORITY:-}
@@ -119,7 +128,7 @@ services:
       dockerfile: deploy/Dockerfile.worker
       args:
         DOCKER_GID: ${DOCKER_GID:-999}
-    image: ghcr.io/saschalaabs/priorstate-worker:${PRIORSTATE_VERSION:-latest}
+    image: ghcr.io/inverterofcontrol/priorstate-worker:${PRIORSTATE_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       postgres: { condition: service_healthy }
@@ -152,8 +161,11 @@ volumes:
   postgres-data:
   garage-meta:
   garage-data:
-  priorstate-render:
   priorstate-keys:
+  # Named explicitly so the API can hand the renderer a volume name the daemon will recognise,
+  # independent of the compose project prefix.
+  priorstate-render:
+    name: ${RENDER_VOLUME:-priorstate-render}
 
 networks:
   priorstate:

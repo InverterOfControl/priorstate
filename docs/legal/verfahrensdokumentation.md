@@ -31,7 +31,7 @@ schwerer zu verteidigen als ein einfacheres Archiv mit sauberer Dokumentation.
 **Beginn des Archivbetriebs:** …
 
 **Eingesetzte Software:** PriorState, Version …, Quelltext öffentlich einsehbar unter
-<https://github.com/saschalaabs/priorstate>, Lizenz AGPL-3.0-only.
+<https://github.com/InverterOfControl/priorstate>, Lizenz AGPL-3.0-only.
 
 ---
 
@@ -83,7 +83,7 @@ Erfassungsbedingungen, Werkzeugversionen) und mit SHA-256 gehasht. Jeder Eintrag
 seines Vorgängers. Eine nachträgliche Änderung eines Eintrags ist damit rechnerisch feststellbar.
 
 Die kanonische Darstellung ist unter
-<https://saschalaabs.github.io/priorstate/reference/canonical-form> vollständig dokumentiert.
+<https://inverterofcontrol.github.io/priorstate/reference/canonical-form> vollständig dokumentiert.
 
 **Technische Absicherung gegen Änderungen.** Die Tabellen der Kette sind in der Datenbank als
 ausschließlich anfügbar eingerichtet. `UPDATE`, `DELETE` und `TRUNCATE` werden durch Trigger

@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Report privately via [GitHub Security Advisories](https://github.com/saschalaabs/priorstate/security/advisories/new).
+Report privately via [GitHub Security Advisories](https://github.com/InverterOfControl/priorstate/security/advisories/new).
 Please do not open a public issue for a vulnerability.
 
 Expect an acknowledgement within a few days. This is a spare-time project — see the support

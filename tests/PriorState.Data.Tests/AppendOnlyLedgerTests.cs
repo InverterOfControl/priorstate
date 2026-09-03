@@ -76,7 +76,8 @@ public sealed class AppendOnlyLedgerTests
 
         var anchor = new TimestampAnchor
         {
-            CoversDateUtc = DateOnly.FromDateTime(snapshot.CapturedAtUtc.UtcDateTime),
+            CoversFromUtc = snapshot.CapturedAtUtc,
+            CoversUntilUtc = snapshot.CapturedAtUtc,
             FirstChainSequence = snapshot.ChainSequence,
             LastChainSequence = snapshot.ChainSequence,
             MerkleRoot = Sha256Hash.Parse(new string('b', 64)),
@@ -86,19 +87,8 @@ public sealed class AppendOnlyLedgerTests
             QualifiedProvider = false,
         };
 
-        // Anchors are inserted per day; this test may run after another has claimed the day.
-        var existing = await db.TimestampAnchors
-            .FirstOrDefaultAsync(a => a.CoversDateUtc == anchor.CoversDateUtc);
-
-        if (existing is null)
-        {
-            db.TimestampAnchors.Add(anchor);
-            await db.SaveChangesAsync();
-        }
-        else
-        {
-            anchor = existing;
-        }
+        db.TimestampAnchors.Add(anchor);
+        await db.SaveChangesAsync();
 
         // The one permitted update: filling in the anchor after the day has been timestamped.
         var affected = await db.Snapshots
@@ -110,7 +100,8 @@ public sealed class AppendOnlyLedgerTests
         // same one. An anchored entry is closed.
         var second = new TimestampAnchor
         {
-            CoversDateUtc = anchor.CoversDateUtc.AddDays(-400),
+            CoversFromUtc = anchor.CoversFromUtc.AddDays(-400),
+            CoversUntilUtc = anchor.CoversFromUtc.AddDays(-400),
             FirstChainSequence = 0,
             LastChainSequence = 0,
             MerkleRoot = Sha256Hash.Parse(new string('c', 64)),
@@ -134,7 +125,8 @@ public sealed class AppendOnlyLedgerTests
 
         var anchor = new TimestampAnchor
         {
-            CoversDateUtc = new DateOnly(2001, 1, 1),
+            CoversFromUtc = new DateTimeOffset(2001, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            CoversUntilUtc = new DateTimeOffset(2001, 1, 1, 0, 0, 0, TimeSpan.Zero),
             FirstChainSequence = 1,
             LastChainSequence = 1,
             MerkleRoot = Sha256Hash.Parse(new string('d', 64)),

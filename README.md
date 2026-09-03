@@ -6,15 +6,16 @@ PriorState captures what a visitor actually saw on a page at a point in time, an
 capture defensible later: hash-chained, externally timestamped, and re-verifiable by someone who
 does not trust you.
 
-It answers questions that a Git history cannot:
+It answers the questions a dispute actually turns on:
 
 - Was statement X on the page on day Y?
 - When exactly was a contested claim removed (proof of compliance after a cease-and-desist)?
 - Which price or advertising claim was online on a given date?
 
-Git records which *code* was deployed. Between that and what a visitor saw sit CMS content,
-feature flags, A/B tests, third-party embeds and backend-driven prices. Git is also rewritable by
-design — force-push, rebase, moved tags. A repository is a history, not a proof.
+A page as a visitor receives it is assembled at request time, out of CMS content, feature flags,
+A/B tests, third-party embeds and prices from backend systems. Once it changes, the state it was
+in is gone, and reconstructing it afterwards from the parts is guesswork. PriorState records the
+rendered result itself, in a form that is still checkable years later.
 
 ## How the guarantee works
 
@@ -72,7 +73,7 @@ worthless as evidence:
 ## Quickstart
 
 ```bash
-git clone https://github.com/saschalaabs/priorstate.git
+git clone https://github.com/InverterOfControl/priorstate.git
 cd priorstate/deploy
 cp .env.example .env
 docker compose up -d
@@ -83,7 +84,7 @@ takes longer than ten minutes, that is a bug worth reporting.
 
 ## Documentation
 
-<https://saschalaabs.github.io/priorstate>
+<https://inverterofcontrol.github.io/priorstate>
 
 ## Licence
 

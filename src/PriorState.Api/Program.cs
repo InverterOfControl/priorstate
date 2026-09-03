@@ -22,6 +22,11 @@ builder.Services.AddOptions<EvidenceOptions>()
 builder.Services.AddOptions<TimestampAuthorityOptions>()
     .Bind(builder.Configuration.GetSection(TimestampAuthorityOptions.SectionName));
 
+// The API needs this too, not just the worker: on-demand anchoring contacts the authority from a
+// request. Standard resilience because it is a third party over the public internet.
+builder.Services.AddHttpClient<ITimestampAuthority, Rfc3161TimestampAuthority>()
+    .AddStandardResilienceHandler();
+
 builder.Services.AddSingleton<IProtocolRenderer, ChromiumProtocolRenderer>();
 builder.Services.AddScoped<EvidencePackageBuilder>();
 builder.Services.AddScoped<DatabaseInitializer>();
@@ -105,7 +110,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health");
-app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>();
+app.MapAuthEndpoints();
 
 app.MapProjectEndpoints();
 app.MapSnapshotEndpoints();

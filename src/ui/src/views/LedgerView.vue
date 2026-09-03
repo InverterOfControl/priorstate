@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { api, type ChainVerificationResult, type LedgerStatus } from '@/lib/api'
-import { formatUtc, formatUtcDate, shortHash } from '@/lib/format'
+import { api, type AnchorResult, type ChainVerificationResult, type LedgerStatus } from '@/lib/api'
+import { formatUtc, shortHash } from '@/lib/format'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
 import DataRow from '@/components/ui/DataRow.vue'
@@ -13,6 +13,8 @@ const { t } = useI18n()
 const status = ref<LedgerStatus | null>(null)
 const verification = ref<ChainVerificationResult | null>(null)
 const verifying = ref(false)
+const anchoring = ref(false)
+const anchorResult = ref<AnchorResult | null>(null)
 const error = ref<string | null>(null)
 
 async function load() {
@@ -35,6 +37,21 @@ async function verify() {
   }
 }
 
+async function anchorNow() {
+  anchoring.value = true
+  anchorResult.value = null
+  error.value = null
+
+  try {
+    anchorResult.value = await api.post<AnchorResult>('/api/ledger/anchor')
+    await load()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    anchoring.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -52,7 +69,7 @@ onMounted(load)
         <DataRow :label="t('ledger.head')" mono>{{ shortHash(status.headHash) }}</DataRow>
         <DataRow :label="t('ledger.lastCapture')">{{ formatUtc(status.lastCapture) }}</DataRow>
         <DataRow :label="t('ledger.anchors')">{{ status.timestampAnchors }}</DataRow>
-        <DataRow :label="t('ledger.lastAnchoredDay')">{{ formatUtcDate(status.lastAnchoredDay) }}</DataRow>
+        <DataRow :label="t('ledger.lastAnchoredAt')">{{ formatUtc(status.lastAnchoredAt) }}</DataRow>
         <DataRow :label="t('ledger.awaitingTimestamp')">
           {{ status.snapshotsAwaitingTimestamp }}
           <span v-if="status.snapshotsAwaitingTimestamp > 0" class="ml-2 text-xs text-ink-muted">
@@ -64,6 +81,33 @@ onMounted(load)
           <p class="mt-1.5 text-xs text-ink-muted">{{ t('storage.note') }}</p>
         </DataRow>
       </dl>
+    </Card>
+
+    <Card :title="t('ledger.anchorTitle')" :subtitle="t('ledger.anchorExplain')">
+      <Button
+        variant="primary"
+        :disabled="anchoring || (status?.snapshotsAwaitingTimestamp ?? 0) === 0"
+        @click="anchorNow"
+      >
+        {{ anchoring ? t('ledger.anchoring') : t('ledger.anchorNow') }}
+      </Button>
+
+      <p
+        v-if="anchorResult?.didAnchor"
+        class="mt-4 rounded-md border border-verified/40 bg-verified/10 px-4 py-2 text-sm text-verified"
+      >
+        {{
+          t('ledger.anchored', {
+            count: anchorResult.entriesAnchored,
+            time: formatUtc(anchorResult.attestedAt),
+          })
+        }}
+      </p>
+      <p v-else-if="anchorResult" class="mt-4 text-sm text-ink-muted">{{ t('ledger.nothingPending') }}</p>
+
+      <p v-if="anchorResult?.didAnchor && !anchorResult.qualified" class="mt-2 text-xs text-caution">
+        {{ t('timestamp.unqualifiedWarning') }}
+      </p>
     </Card>
 
     <Card :title="t('ledger.verify')" :subtitle="t('ledger.explain')">

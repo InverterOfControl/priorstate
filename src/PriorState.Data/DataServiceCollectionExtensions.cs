@@ -23,6 +23,7 @@ public static class DataServiceCollectionExtensions
             }));
 
         services.AddScoped<SnapshotLedger>();
+        services.AddScoped<TimestampAnchorService>();
 
         return services;
     }

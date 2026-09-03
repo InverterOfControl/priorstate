@@ -54,8 +54,17 @@ public sealed class EvidenceOptions
 
     public string DockerEndpoint { get; set; } = "unix:///var/run/docker.sock";
 
-    /// <summary>Shared directory for handing HTML to the renderer and collecting the PDF back.</summary>
+    /// <summary>Directory, as this process sees it, for handing HTML to the renderer and taking the PDF back.</summary>
     public string WorkDirectory { get; set; } = "/var/lib/priorstate/render";
 
-    public string HostWorkDirectory { get; set; } = "/var/lib/priorstate/render";
+    /// <summary>
+    /// What the renderer container mounts at /render. Passed verbatim to the Docker daemon as a
+    /// bind source, so it is resolved by the *host*, not by this process — a path that is valid in
+    /// here means nothing to the daemon.
+    ///
+    /// A named Docker volume is the sane default. A host path also works, but then that directory
+    /// has to be writable by the uid this process runs as, which in a container is a permission
+    /// problem waiting to happen; a named volume inherits ownership from the image and simply works.
+    /// </summary>
+    public string RenderMountSource { get; set; } = "priorstate-render";
 }
