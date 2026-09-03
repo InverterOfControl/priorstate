@@ -32,46 +32,57 @@ public sealed class SnapshotLedger
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
-        var ownsTransaction = _db.Database.CurrentTransaction is null;
-        var transaction = ownsTransaction
-            ? await _db.Database.BeginTransactionAsync(cancellationToken)
-            : null;
-
-        try
+        // A caller that already opened a transaction owns it, and the advisory lock it holds
+        // covers this work too.
+        if (_db.Database.CurrentTransaction is not null)
         {
-            // Released automatically when the transaction ends, however it ends.
-            await _db.Database.ExecuteSqlAsync(
-                $"SELECT pg_advisory_xact_lock({AdvisoryLockKey})",
-                cancellationToken);
-
-            var tail = await _db.Snapshots
-                .AsNoTracking()
-                .OrderByDescending(s => s.ChainSequence)
-                .Select(s => new { s.ChainSequence, s.EntryHash })
-                .FirstOrDefaultAsync(cancellationToken);
-
-            HashChain.Link(
-                snapshot,
-                previousSequence: tail?.ChainSequence ?? 0,
-                previousHash: tail?.EntryHash ?? Sha256Hash.Genesis);
-
-            _db.Snapshots.Add(snapshot);
-            await _db.SaveChangesAsync(cancellationToken);
-
-            if (transaction is not null)
-            {
-                await transaction.CommitAsync(cancellationToken);
-            }
-
-            return snapshot;
+            return await AppendCoreAsync(snapshot, cancellationToken);
         }
-        finally
+
+        // The connection is configured with EnableRetryOnFailure, and EF refuses a user-initiated
+        // transaction under a retrying strategy unless the whole unit runs inside that strategy —
+        // otherwise a retry would replay half a transaction. Reading the chain tail, linking onto
+        // it and inserting have to succeed or fail together, so they go in as one retriable unit.
+        var strategy = _db.Database.CreateExecutionStrategy();
+
+        return await strategy.ExecuteAsync(async () =>
         {
-            if (transaction is not null)
-            {
-                await transaction.DisposeAsync();
-            }
-        }
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+            var appended = await AppendCoreAsync(snapshot, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return appended;
+        });
+    }
+
+    /// <summary>
+    /// The append itself, assuming an ambient transaction. The advisory lock is transaction-scoped
+    /// and is released when that transaction ends, however it ends.
+    /// </summary>
+    private async Task<Snapshot> AppendCoreAsync(Snapshot snapshot, CancellationToken cancellationToken)
+    {
+        await _db.Database.ExecuteSqlAsync(
+            $"SELECT pg_advisory_xact_lock({AdvisoryLockKey})",
+            cancellationToken);
+
+        var tail = await _db.Snapshots
+            .AsNoTracking()
+            .OrderByDescending(s => s.ChainSequence)
+            .Select(s => new { s.ChainSequence, s.EntryHash })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // Recomputed on every attempt rather than reused: a retry may see a different tail, and
+        // the entry must hash over the predecessor it actually follows.
+        HashChain.Link(
+            snapshot,
+            previousSequence: tail?.ChainSequence ?? 0,
+            previousHash: tail?.EntryHash ?? Sha256Hash.Genesis);
+
+        _db.Snapshots.Add(snapshot);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return snapshot;
     }
 
     /// <summary>

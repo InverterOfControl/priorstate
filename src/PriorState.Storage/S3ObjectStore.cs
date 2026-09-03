@@ -56,6 +56,10 @@ public sealed partial class S3ObjectStore : IObjectStore
         var sha256 = Sha256Hash.FromBytes(await SHA256.HashDataAsync(buffer, cancellationToken));
         buffer.Position = 0;
 
+        // Read the length now: the AWS SDK closes the input stream once the upload completes, so
+        // anything that touches the buffer afterwards throws ObjectDisposedException.
+        var sizeBytes = buffer.Length;
+
         var applyLock = WormCapability is WormSupport.Enforced or WormSupport.ApiPresentUnverified;
         DateTimeOffset? retainUntil = applyLock ? DateTimeOffset.UtcNow.Add(retention) : null;
 
@@ -66,6 +70,9 @@ public sealed partial class S3ObjectStore : IObjectStore
             InputStream = buffer,
             ContentType = contentType,
             ChecksumSHA256 = Convert.ToBase64String(sha256.ToBytes()),
+            // We own the buffer and dispose it ourselves; letting the SDK close it early is what
+            // made the size read above fail.
+            AutoCloseStream = false,
         };
 
         if (applyLock)
@@ -83,12 +90,12 @@ public sealed partial class S3ObjectStore : IObjectStore
             throw new ObjectStoreException($"Could not store object '{key}' in bucket '{_options.Bucket}'.", ex);
         }
 
-        LogStored(key, buffer.Length, WormCapability);
+        LogStored(key, sizeBytes, WormCapability);
 
         return new ObjectWriteResult
         {
             Key = key,
-            SizeBytes = buffer.Length,
+            SizeBytes = sizeBytes,
             Sha256 = sha256,
             // Only a probe that actually saw a delete refused earns the Enforced label on a
             // snapshot. Anything weaker is reported as what it is.

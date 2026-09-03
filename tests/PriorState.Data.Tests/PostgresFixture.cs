@@ -35,8 +35,13 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public PriorStateDbContext CreateContext()
     {
+        // EnableRetryOnFailure mirrors the production configuration in AddPriorStateData. It
+        // matters: a retrying execution strategy makes EF reject user-initiated transactions,
+        // which is exactly the path SnapshotLedger.AppendAsync takes. A fixture without it lets
+        // that break in production while the tests stay green.
         var options = new DbContextOptionsBuilder<PriorStateDbContext>()
-            .UseNpgsql(ConnectionString)
+            .UseNpgsql(ConnectionString, npgsql =>
+                npgsql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(2), null))
             .Options;
 
         return new PriorStateDbContext(options);

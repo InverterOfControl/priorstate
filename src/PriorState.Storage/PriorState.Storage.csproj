@@ -6,4 +6,8 @@
   <ItemGroup>
     <ProjectReference Include="..\PriorState.Domain\PriorState.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The probe result is set once at startup by StorageInitializer; tests need to set it too. -->
+    <InternalsVisibleTo Include="PriorState.Storage.Tests" />
+  </ItemGroup>
 </Project>
