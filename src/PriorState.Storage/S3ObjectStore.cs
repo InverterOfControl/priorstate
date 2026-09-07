@@ -119,6 +119,38 @@ public sealed partial class S3ObjectStore : IObjectStore
         }
     }
 
+    public async Task<Stream> GetRangeAsync(
+        string key,
+        long firstByte,
+        long lastByte,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentOutOfRangeException.ThrowIfNegative(firstByte);
+        ArgumentOutOfRangeException.ThrowIfLessThan(lastByte, firstByte);
+
+        try
+        {
+            // ByteRange is inclusive at both ends, which is also how HTTP states it, so the range
+            // the caller was asked for goes to the backend unaltered.
+            var response = await _s3.GetObjectAsync(
+                new GetObjectRequest
+                {
+                    BucketName = _options.Bucket,
+                    Key = key,
+                    ByteRange = new ByteRange(firstByte, lastByte),
+                },
+                cancellationToken);
+
+            return response.ResponseStream;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            throw new ObjectStoreException(
+                $"Could not read bytes {firstByte}-{lastByte} of object '{key}' from bucket '{_options.Bucket}'.", ex);
+        }
+    }
+
     public async Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);

@@ -1,0 +1,36 @@
+# What the image builds must come from the repository, not from whatever this working copy happens
+# to contain. Without this file `COPY src/ src/` drags the host's src/ui/node_modules in on top of
+# the one `npm ci` just installed inside the image, and the platform-specific binaries of rollup
+# and esbuild go with it — a Windows or macOS working copy then fails the UI build in the Linux
+# image with "Cannot find module @rollup/rollup-linux-x64-musl".
+**/node_modules/
+
+# .NET intermediate and output directories. Restore and publish run inside the image.
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+
+# Build output of the Vue app. Dockerfile.api takes this from the ui stage, never from the host.
+src/PriorState.Api/wwwroot/
+
+# Local secrets and runtime data. deploy/.env holds the compose credentials and has no business
+# being uploaded as build context; .env.example is the file that belongs in an image or a repo.
+deploy/.env
+deploy/data/
+**/.env
+**/.env.local
+!deploy/.env.example
+
+# Nothing in the build reads git history, and the directory is large.
+.git/
+.github/
+.vs/
+.idea/
+
+# Documentation site, its build cache, and its own node_modules.
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
+*.wacz
+*.tsbuildinfo

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Net.Http.Headers;
 using PriorState.Api.Services;
 using PriorState.Data;
 using PriorState.Domain.Entities;
@@ -87,13 +88,26 @@ public static class ArchiveEndpoints
             return Results.Ok(snapshot);
         });
 
-        // Streams the stored payload. For a page capture that is the WACZ, and ReplayWeb.page
-        // seeks within it rather than downloading all of it, so range requests matter. For a
-        // plugin snapshot it is whatever the endpoint returned, served under the media type that
-        // was recorded — handing a caller JSON labelled application/wacz would be a lie about the
-        // one thing this file is supposed to be authoritative about.
-        group.MapGet("/{id:guid}/archive", async (
+        // Streams the stored payload. For a plugin snapshot that is whatever the endpoint
+        // returned, served under the media type that was recorded — handing a caller JSON
+        // labelled application/wacz would be a lie about the one thing this file is supposed to
+        // be authoritative about.
+        //
+        // For a page capture it is the WACZ, and a replay viewer does not download it: it reads
+        // the ZIP directory at the end of the file, then the index, then individual records. Both
+        // the length and real range support are therefore load-bearing, and neither can be left
+        // to the framework, because the object store hands back a network stream that cannot
+        // seek. ASP.NET quietly drops range processing for such a stream and answers with the
+        // whole object under no Content-Length, which a viewer reports as being unable to get at
+        // the size of the file. The length comes from the ledger entry instead, where it was
+        // recorded at capture time as part of what was hashed, and the range is passed through to
+        // the backend rather than served by discarding most of a full read.
+        //
+        // HEAD is mapped alongside GET deliberately. Without it the SPA fallback answers a size
+        // probe with index.html, and a 200 carrying the wrong length is worse than a 404.
+        group.MapMethods("/{id:guid}/archive", [HttpMethods.Get, HttpMethods.Head], async (
             Guid id,
+            HttpContext http,
             PriorStateDbContext db,
             Storage.IObjectStore storage,
             AuditLog audit,
@@ -105,9 +119,6 @@ public static class ArchiveEndpoints
                 return Results.NotFound();
             }
 
-            // Reading the archived bytes is an access event, whichever kind of payload it is.
-            await audit.RecordAsync(AuditAction.SnapshotReplayed, nameof(Snapshot), id.ToString(), snapshot.Url, ct);
-
             var isPageCapture = string.Equals(
                 snapshot.CanonicalFormVersion, CanonicalSnapshotForm.Version1, StringComparison.Ordinal);
 
@@ -115,8 +126,49 @@ public static class ArchiveEndpoints
                 ? $"{id}.wacz"
                 : PayloadNaming.FileNameFor(snapshot.PayloadMediaType);
 
-            var stream = await storage.GetAsync(snapshot.PayloadObjectKey, ct);
-            return Results.Stream(stream, snapshot.PayloadMediaType, fileName, enableRangeProcessing: true);
+            var total = snapshot.PayloadSizeBytes;
+            var response = http.Response;
+            response.ContentType = snapshot.PayloadMediaType;
+            response.Headers.AcceptRanges = "bytes";
+            response.Headers.ContentDisposition =
+                new ContentDispositionHeaderValue("attachment") { FileName = fileName }.ToString();
+
+            // A size probe reads none of the archived bytes, so it is answered but not recorded
+            // as a read of them.
+            if (HttpMethods.IsHead(http.Request.Method))
+            {
+                response.ContentLength = total;
+                return Results.Empty;
+            }
+
+            var outcome = ResolveRange(http.Request, total, out var from, out var to);
+
+            if (outcome == RangeOutcome.Unsatisfiable)
+            {
+                response.Headers.ContentRange = $"bytes */{total}";
+                return Results.StatusCode(StatusCodes.Status416RangeNotSatisfiable);
+            }
+
+            // Reading the archived bytes is an access event, whichever kind of payload it is and
+            // however much of it was asked for.
+            await audit.RecordAsync(AuditAction.SnapshotReplayed, nameof(Snapshot), id.ToString(), snapshot.Url, ct);
+
+            if (outcome == RangeOutcome.Satisfiable)
+            {
+                response.StatusCode = StatusCodes.Status206PartialContent;
+                response.Headers.ContentRange = $"bytes {from}-{to}/{total}";
+                response.ContentLength = to - from + 1;
+
+                await using var partial = await storage.GetRangeAsync(snapshot.PayloadObjectKey, from, to, ct);
+                await partial.CopyToAsync(response.Body, ct);
+                return Results.Empty;
+            }
+
+            response.ContentLength = total;
+
+            await using var stream = await storage.GetAsync(snapshot.PayloadObjectKey, ct);
+            await stream.CopyToAsync(response.Body, ct);
+            return Results.Empty;
         });
 
         group.MapGet("/{id:guid}/evidence", async (
@@ -251,6 +303,62 @@ public static class ArchiveEndpoints
 
             return Results.Ok(result);
         });
+    }
+
+    private enum RangeOutcome
+    {
+        /// <summary>None was asked for, or one this endpoint does not serve. Send everything.</summary>
+        None,
+
+        Satisfiable,
+
+        /// <summary>Asked for, and starting past the end of the object.</summary>
+        Unsatisfiable,
+    }
+
+    /// <summary>
+    /// Works out which bytes of an object of <paramref name="total"/> bytes were asked for.
+    ///
+    /// Only a single range is honoured. A replay viewer asks for one at a time, and a multipart
+    /// response would be a good deal of machinery for a request nothing here makes; asking for
+    /// several is answered with the whole object, which is allowed, if wasteful.
+    /// </summary>
+    private static RangeOutcome ResolveRange(HttpRequest request, long total, out long from, out long to)
+    {
+        from = 0;
+        to = 0;
+
+        var range = request.GetTypedHeaders().Range;
+
+        if (range is null
+            || !string.Equals(range.Unit.Value, "bytes", StringComparison.OrdinalIgnoreCase)
+            || range.Ranges.Count != 1)
+        {
+            return RangeOutcome.None;
+        }
+
+        var asked = range.Ranges.Single();
+
+        if (asked.From is { } start)
+        {
+            from = start;
+            // An open-ended range runs to the end of the object, and an end stated past the end of
+            // the object is clamped rather than refused, as HTTP requires.
+            to = asked.To is { } end ? Math.Min(end, total - 1) : total - 1;
+        }
+        else if (asked.To is { } suffixLength)
+        {
+            // "bytes=-500": the last 500 bytes. This is how a viewer finds the directory of a
+            // WACZ before it knows anything else about the file.
+            from = Math.Max(0, total - suffixLength);
+            to = total - 1;
+        }
+        else
+        {
+            return RangeOutcome.None;
+        }
+
+        return from < total && from <= to ? RangeOutcome.Satisfiable : RangeOutcome.Unsatisfiable;
     }
 }
 

@@ -24,6 +24,20 @@ public interface IObjectStore
 
     Task<Stream> GetAsync(string key, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Reads part of an object, <paramref name="firstByte"/> to <paramref name="lastByte"/> inclusive.
+    ///
+    /// Here because a replay viewer reads a WACZ by seeking around inside it rather than
+    /// downloading it, and the stream <see cref="GetAsync"/> returns cannot seek. Answering a
+    /// range by fetching the whole object and discarding most of it would turn one page view into
+    /// tens of full downloads out of the backend.
+    /// </summary>
+    Task<Stream> GetRangeAsync(
+        string key,
+        long firstByte,
+        long lastByte,
+        CancellationToken cancellationToken = default);
+
     Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>

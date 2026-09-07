@@ -11,6 +11,28 @@ import IntegrityBadge from '@/components/ui/IntegrityBadge.vue'
 // browser rather than resolve them as components.
 import 'replaywebpage'
 
+/**
+ * Lets ReplayWeb.page get as far as registering its service worker.
+ *
+ * It registers through register-service-worker, which decides once, when that module is first
+ * evaluated, whether the page has finished loading: it captures a promise of the window "load"
+ * event at import time and waits on it before touching navigator.serviceWorker. This view is a
+ * lazily loaded route chunk, so whenever it is reached after the page has settled — following any
+ * link inside the application, which is the normal way to get here — that event is already in the
+ * past, nothing ever resolves the promise, and registration is not attempted at all.
+ *
+ * The component gives no sign of it. It waits on its own registration before rendering the replay
+ * iframe, so what is left is an empty box with no error in it and nothing in the console.
+ *
+ * Re-firing the event lets the listener it just added run. Nothing else in this application
+ * listens for load, so the only code this reaches is the one waiting for it.
+ */
+function releaseServiceWorkerRegistration(): void {
+  if (document.readyState === 'complete') {
+    window.dispatchEvent(new Event('load'))
+  }
+}
+
 const props = defineProps<{ id: string }>()
 const { t } = useI18n()
 
@@ -84,6 +106,8 @@ const shownPayload = computed(() => {
 })
 
 onMounted(async () => {
+  releaseServiceWorkerRegistration()
+
   try {
     snapshot.value = await api.get<SnapshotDetail>(`/api/snapshots/${props.id}`)
   } catch (e) {
