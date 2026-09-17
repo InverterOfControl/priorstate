@@ -16,7 +16,10 @@ cd priorstate/deploy
 cp .env.example .env
 ```
 
-Open `.env` and change `POSTGRES_PASSWORD`. Then find the group id of your Docker socket, so the
+Open `.env` and set distinct `POSTGRES_PASSWORD` and `POSTGRES_APP_PASSWORD` values. Compose runs
+migrations in a one-shot administrator process; API and worker use the restricted runtime account.
+For an existing installation, follow [database accounts and upgrades](/operations/database).
+Then find the group id of your Docker socket, so the
 worker can start crawl containers without running as root:
 
 ```bash
@@ -65,6 +68,11 @@ earnest. Deciding scope, frequency and retention afterwards is possible; decidin
 much cheaper.
 
 ## Development
+
+Before launching API or worker locally, run the API with `--migrate` using administrator database
+credentials and `Database__RuntimePassword`. Switch to the `priorstate_app` connection for normal
+startup. See [running outside Compose](/operations/database#running-outside-compose) for the
+configuration; normal API startup does not apply migrations.
 
 ```bash
 cd deploy && docker compose up -d postgres garage garage-init   # dependencies only

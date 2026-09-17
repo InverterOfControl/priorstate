@@ -47,6 +47,7 @@ public sealed partial class EvidencePackageBuilder
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(destination);
 
+        var certificateChain = EvidenceCertificateValidator.ReadConfiguredChain(_options.CaChainPemPath);
         var snapshot = request.Snapshot;
         var packageId = Guid.CreateVersion7();
 
@@ -74,10 +75,10 @@ public sealed partial class EvidencePackageBuilder
 
         await WriteEmbeddedAsync(archive, "verify.sh", "PriorState.Evidence.Resources.verify.sh", cancellationToken);
 
-        if (_options.CaChainPemPath is { Length: > 0 } chainPath && File.Exists(chainPath))
+        if (certificateChain is not null)
         {
             await WriteEntryAsync(
-                archive, "timestamp/tsa-chain.pem", await File.ReadAllBytesAsync(chainPath, cancellationToken),
+                archive, "timestamp/tsa-chain.pem", certificateChain,
                 cancellationToken);
         }
         else
@@ -186,57 +187,53 @@ public sealed partial class EvidencePackageBuilder
 
         var payloadLines = isPlugin
             ? $"""
-                 {EvidencePackageLayout.PayloadFileName(snapshot),-22}The archived response, exactly as the endpoint sent it.
+                 {EvidencePackageLayout.PayloadFileName(snapshot),-22}The archived response bytes, as recorded.
                  {EvidencePackageLayout.PluginBinding,-22}The plugin configuration this ran under, as hashed.
                  {EvidencePackageLayout.PluginConfiguration,-22}That configuration in full, for reading.
                """
             : $"  {EvidencePackageLayout.PageCapturePayload,-22}The web archive. Open at https://replayweb.page (works offline).";
 
-        var scope = isPlugin
-            ? $"""
-               Proved: the payload is unaltered since it was recorded, it was fetched from the URL above under
-               the plugin configuration shipped in {EvidencePackageLayout.PluginConfiguration}, and it existed in
-               exactly this form before the time attested by the timestamp authority.
+        var scope = """
+            With independently trusted CA roots, successful verification establishes that the payload
+            and recorded metadata match commitments made before the timestamp authority's signed time.
 
-               Not proved: that what the endpoint returned was correct. This attests receipt, not truth.
-               """
-            : """
-              Proved: the archive is unaltered since it was recorded, and it existed in exactly this
-              form before the time attested by the timestamp authority.
-
-              Not proved: that the capture was complete or representative of the whole site. Judge that
-              from snapshot.wacz and the capture conditions recorded in canonical/entry.txt.
-              """;
+            It does not independently establish the URL of origin, exact capture time, completeness,
+            truth of the content, or that the recorded browser/plugin configuration was actually used.
+            The manifest authority URL and qualified status are unverified operator assertions.
+            """;
 
         return $"""
         PriorState evidence package
         ===========================
 
-        URL       {snapshot.Url}
-        Captured  {CanonicalSnapshotForm.FormatTimestamp(snapshot.CapturedAtUtc)} UTC
+        {(isPlugin ? "URL" : "First seed URL")}  {snapshot.Url}
+        {(isPlugin ? "Captured" : "Crawl started (operator-recorded)")}  {CanonicalSnapshotForm.FormatTimestamp(snapshot.CapturedAtUtc)} UTC
         Profile   {snapshot.CaptureProfileVersion?.Designation ?? "unknown"}
 
         What is in here
         ---------------
 
           protocol.pdf           Human-readable record. Start here.
-          verify.sh              Re-derives every claim in the protocol. Read it, then run it.
+          verify.sh              Checks hashes and the timestamp signature. Read it before running.
         {payloadLines}
           canonical/entry.txt    The exact bytes that were hashed into the ledger.
           manifest.txt           The same facts, machine-readable.
           merkle/audit-path.txt  Proof that this entry belongs to the timestamped root.
           timestamp/token.tsr    RFC-3161 token from an independent authority.
           timestamp/root.txt     The value that token attests to.
-          timestamp/tsa-chain.pem  The authority's certificates, for offline verification.
+          timestamp/tsa-chain.pem  Operator-supplied certificates; untrusted chain material.
 
         How to check it yourself
         ------------------------
 
-            sh verify.sh
+            sh verify.sh --ca-file /path/to/independently-trusted-ca.pem
 
         Requires a POSIX shell, openssl, xxd and sha256sum. It contacts nothing over the network
-        and trusts nothing about the system that produced this package. Exit code 0 means every
-        check passed.
+        and requires CA roots that you obtained and authenticated independently of the archive operator.
+        Do not use the bundled certificates as trust roots merely because they are in this package.
+        Relative CA paths are resolved from your current directory. Exit code 0 means the cryptographic
+        checks passed under those trust roots; 1 means verification failed; 2 means invalid input.
+        No revocation lookup or qualified-provider status check is performed.
 
         What this proves, and what it does not
         --------------------------------------
@@ -280,8 +277,8 @@ public sealed partial class EvidencePackageBuilder
     [LoggerMessage(
         EventId = 5001,
         Level = LogLevel.Warning,
-        Message = "No timestamp authority certificate chain is configured (Evidence:CaChainPemPath), so "
-                  + "evidence packages cannot be verified offline. The recipient will have to source the "
-                  + "authority's certificates themselves.")]
+        Message = "No timestamp authority certificate chain is configured (Evidence:CaChainPemPath). "
+                  + "Packages omit supporting certificates; recipients must supply independently trusted "
+                  + "CA roots and any signer certificates not included in the timestamp token.")]
     private partial void LogMissingCaChain();
 }

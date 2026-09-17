@@ -12,15 +12,29 @@ using PriorState.Plugins;
 using PriorState.Plugins.HttpJson;
 using PriorState.Storage;
 
-var builder = WebApplication.CreateBuilder(args);
+var migrateOnly = args.Contains("--migrate", StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(arg => arg != "--migrate").ToArray());
 
 builder.Services.AddPriorStateData(builder.Configuration);
+if (migrateOnly)
+{
+    builder.Services.AddScoped<DatabaseInitializer>();
+    await using var migrationApp = builder.Build();
+    await using var scope = migrationApp.Services.CreateAsyncScope();
+    var password = builder.Configuration["Database:RuntimePassword"]
+        ?? throw new InvalidOperationException("Database:RuntimePassword is required for --migrate.");
+    await scope.ServiceProvider.GetRequiredService<DatabaseInitializer>().InitialiseAsync();
+    await RuntimeDatabaseRole.ConfigureAsync(scope.ServiceProvider.GetRequiredService<PriorStateDbContext>(), password);
+    return;
+}
 builder.Services.AddPriorStateStorage(builder.Configuration);
 
 builder.Services.AddOptions<CrawlerOptions>()
     .Bind(builder.Configuration.GetSection(CrawlerOptions.SectionName));
 builder.Services.AddOptions<EvidenceOptions>()
-    .Bind(builder.Configuration.GetSection(EvidenceOptions.SectionName));
+    .Bind(builder.Configuration.GetSection(EvidenceOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<EvidenceOptions>, EvidenceCertificateValidator>();
 builder.Services.AddOptions<TimestampAuthorityOptions>()
     .Bind(builder.Configuration.GetSection(TimestampAuthorityOptions.SectionName));
 
@@ -98,12 +112,12 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// Migrations and the seeded capture profile run before the first request, so that a first
-// `docker compose up` reaches a usable system with no manual step.
-await using (var scope = app.Services.CreateAsyncScope())
+// Diagnose export configuration before accepting requests, including hosts without a configured bundle.
+var evidenceOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<EvidenceOptions>>().Value;
+if (string.IsNullOrWhiteSpace(evidenceOptions.CaChainPemPath))
 {
-    await scope.ServiceProvider.GetRequiredService<DatabaseInitializer>()
-        .InitialiseAsync(app.Lifetime.ApplicationStopping);
+    LoggerMessage.Define(LogLevel.Warning, new EventId(5002, "MissingEvidenceCertificates"),
+        "Evidence:CaChainPemPath is not configured. Evidence packages will omit TSA certificates; recipients must supply their own trusted CA bundle. See deploy/tsa-certificates.md.")(app.Logger, null);
 }
 
 app.UseExceptionHandler();

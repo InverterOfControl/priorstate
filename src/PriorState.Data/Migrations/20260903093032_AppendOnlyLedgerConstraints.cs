@@ -141,10 +141,10 @@ namespace PriorState.Data.Migrations
 
             // --- Defence in depth: a role with no privilege to attempt any of the above. ---
             //
-            // The triggers above bind everyone, including a superuser and the table owner, so this
-            // role is not what makes the guarantee hold. It exists so an operator can run the
-            // application as something other than the schema owner and have the privilege system
-            // agree with the triggers. Migrations still run as the owner. See docs/operations.
+            // Triggers reject ordinary writes, but owners and superusers can disable or remove
+            // them. Runtime services must use this restricted role rather than the schema owner.
+            // The separate migration process configures its login and operational grants;
+            // administrator and Docker-host access remain outside this protection.
             migrationBuilder.Sql("""
                 DO $$
                 BEGIN

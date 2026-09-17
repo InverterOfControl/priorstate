@@ -7,15 +7,35 @@ taken apart in exactly the situation it was built for.
 ## What an evidence package proves
 
 1. The archive file is byte-for-byte the file that was recorded.
-2. The recorded metadata — URL, capture time, profile, browser conditions — hashes to the entry
+2. The recorded metadata — seed URL and crawl start for browser archives, plugin observation time
+   for plugin responses, profile and conditions — hashes to the entry
    hash that was committed to the ledger.
-3. That entry belongs to the Merkle root for its day.
-4. An independent authority signed that root at the attested time.
+3. That entry belongs to the Merkle root for its anchor batch.
+4. An authority signed that root at the attested time, provided its certificate chain verifies
+   against a root the recipient has independently authenticated.
 
 Together: **this snapshot existed, in exactly this form, before the attested moment, and has not
 changed since.**
 
+Until anchoring succeeds, a snapshot has no external timestamp. The scheduled worker checks hourly
+and batches pending entries dated before today (UTC); manual anchoring can include today's entries.
+An anchor may cover several days. Unsigned protocol and manifest descriptions are not all
+cryptographically authenticated by the verifier.
+
 ## What it does not prove
+
+**The exact capture or removal time.** Browser snapshot metadata stores the first project seed
+URL and crawl start, not each page's actual request time or final URL. Inspect the WACZ's individual
+page records for more detail. Plugin observation times also come from the operator's system.
+A timestamp authority attests the committed bytes existed by its signing time; it does not
+validate those recorded times or where the content came from. Comparing periodic visits can
+bracket an observed change, but does not prove exactly when content changed or what was served
+between visits.
+
+**That an administrator cannot alter the database.** The default restricted runtime role cannot
+rewrite ledger history or remove its triggers. Schema administrators and people controlling the
+Docker host remain capable of doing so. Independent timestamp verification can reveal changes
+to anchored bytes; it cannot recover missing archives. See [database accounts](/operations/database).
 
 **That the capture was complete.** A crawler with a page limit, a site that renders differently
 for a datacentre IP, content behind an interaction the crawler did not perform — all produce a

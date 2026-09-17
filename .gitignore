@@ -8,6 +8,7 @@ artifacts/
 [Dd]ebug/
 [Rr]elease/
 .vs/
+.worktrees/
 *.nupkg
 TestResults/
 coverage/
@@ -52,3 +53,6 @@ deploy/.env
 # Internal strategy notes. The concept document discusses the employer arrangement, the naming
 # decision and commercial options, none of which belong in a public repository.
 konzept-website-revisionssicherheit.md
+
+# Public demonstration TSA root, deliberately distributed for offline verification.
+!deploy/tsa-chain.pem

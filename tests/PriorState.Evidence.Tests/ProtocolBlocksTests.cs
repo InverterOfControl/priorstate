@@ -34,6 +34,19 @@ public sealed class ProtocolBlocksTests
     }
 
     [Fact]
+    public void MetadataLabels_DistinguishCrawlMetadataFromPluginObservations()
+    {
+        var page = ProtocolBlocks.For(PageCaptureRequest());
+        var plugin = ProtocolBlocks.For(PluginRequest());
+        Assert.Equal("Erste Start-URL des Crawls", page["UrlLabel"]);
+        Assert.Equal("Crawl gestartet (Betreiberangabe)", page["CapturedAtLabel"]);
+        Assert.Contains("nicht aus dem Archiv ermittelt", page["FinalUrlLabel"], StringComparison.Ordinal);
+        Assert.Contains("Der Zeitstempel bestätigt diese Angaben nicht", page["ScopeNotice"], StringComparison.Ordinal);
+        Assert.Equal("URL", plugin["UrlLabel"]);
+        Assert.Equal("Erfassungszeitpunkt", plugin["CapturedAtLabel"]);
+    }
+
+    [Fact]
     public void PageCapture_RecordsTheBrowserConditions()
     {
         var block = ProtocolBlocks.For(PageCaptureRequest())["CaptureContextBlock"];

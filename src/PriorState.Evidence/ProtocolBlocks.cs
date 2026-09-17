@@ -56,7 +56,10 @@ internal static class ProtocolBlocks
 
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["ProtocolSubtitle"] = "Nachweis über den Zustand einer Webseite zu einem bestimmten Zeitpunkt.",
+            ["UrlLabel"] = "Erste Start-URL des Crawls",
+            ["FinalUrlLabel"] = "End-URL (nicht aus dem Archiv ermittelt)",
+            ["CapturedAtLabel"] = "Crawl gestartet (Betreiberangabe)",
+            ["ProtocolSubtitle"] = "Nachweis über die Archivdatei eines Webseiten-Crawls.",
             ["CaptureContextBlock"] = conditions,
             ["PayloadSummaryRow"] = Row(
                 "Archivdatei",
@@ -64,7 +67,9 @@ internal static class ProtocolBlocks
             ["PayloadHashRow"] = Row("Hash der Archivdatei", s.PayloadSha256.Value, hash: true),
             ["ScopeNotice"] =
                 "<strong>Grenzen dieses Protokolls.</strong> Bescheinigt wird, dass die beiliegende Archivdatei "
-                + "seit dem Erfassungszeitpunkt unverändert ist und zum bescheinigten Zeitpunkt bereits bestand. "
+                + "zum bescheinigten Zeitpunkt bereits bestand und seither unverändert ist. "
+                + "Start-URL und Crawl-Start sind Betreiberangaben, keine einzelnen Seitenaufrufe. "
+                + "Der Zeitstempel bestätigt diese Angaben nicht; Seitenzeiten und Weiterleitungen sind im WACZ zu prüfen. "
                 + "Nicht bescheinigt wird, dass die Erfassung inhaltlich vollständig oder repräsentativ ist; "
                 + "dies ist anhand der Archivdatei und der oben genannten Erfassungsbedingungen zu beurteilen.",
         };
@@ -105,6 +110,9 @@ internal static class ProtocolBlocks
 
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["UrlLabel"] = "URL",
+            ["FinalUrlLabel"] = "Tatsächlich geladen",
+            ["CapturedAtLabel"] = "Erfassungszeitpunkt",
             ["ProtocolSubtitle"] =
                 "Nachweis über die von einer Schnittstelle gelieferten Daten zu einem bestimmten Zeitpunkt.",
             ["CaptureContextBlock"] = context,

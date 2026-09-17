@@ -39,6 +39,7 @@ export default defineConfig({
       {
         text: 'Operations',
         items: [
+          { text: 'Database accounts and upgrades', link: '/operations/database' },
           { text: 'Storage and WORM', link: '/operations/storage' },
           { text: 'Timestamp authority', link: '/operations/timestamping' },
           { text: 'Capture profiles', link: '/operations/capture-profiles' },

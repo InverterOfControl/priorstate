@@ -44,13 +44,17 @@ The entry hash is `SHA-256` over exactly those bytes.
 |---|---|
 | `sequence` | Position in the chain, contiguous from 1. A gap is tampering. |
 | `prev` | Entry hash of the preceding entry, or 64 zeros for the first. |
-| `url` | The URL as requested, before any redirect. |
-| `final_url` | Where the browser ended up, empty if unchanged. A redirect is itself evidence. |
-| `captured_at` | UTC, second precision, always `Z`-suffixed. |
+| `url` | For browser archives: the first project seed URL, shared by every WACZ from the run. Not an extracted per-page URL. |
+| `final_url` | Reserved for a final URL. The current browser worker leaves this empty; this does not prove no redirect occurred. |
+| `captured_at` | For browser archives: the operator-recorded crawl start, not each page request time. UTC, second precision, always `Z`-suffixed. |
 | `wacz_sha256` | SHA-256 of the archive file as stored, lowercase hex. |
 | `wacz_size` | Size in bytes. |
 | `profile` | Capture profile name and version, e.g. `DE-Standard v1`. |
 | `user_agent` … `crawler` | The conditions the capture actually ran under. |
+
+These existing field names and bytes remain unchanged for compatibility. The timestamp authority
+attests that the committed data existed by its signing time, not that the recorded crawl start
+is correct. Consult the WACZ for individual page records.
 
 ## Version 2
 
@@ -79,6 +83,8 @@ binding_digest=56c946e0e9db65166f4eef0f32f714d0bfe94dd34f0d2e5addb65e7e4b6f41ca
 
 | Field | Meaning |
 |---|---|
+| `url` | The source URL reported by the plugin. |
+| `captured_at` | The observation time reported by the plugin on the operator's system, not an independently measured TSA time. |
 | `payload_sha256` | SHA-256 of the archived response as stored, lowercase hex. |
 | `payload_size` | Size in bytes. |
 | `payload_media_type` | The media type the source reported, e.g. `application/json`. |

@@ -137,6 +137,7 @@ onMounted(async () => {
           {{ isPageCapture ? t('snapshot.title') : t('snapshot.pluginTitle') }}
         </h1>
         <p class="mt-0.5 text-sm text-ink-muted">{{ snapshot.url }}</p>
+        <p v-if="isPageCapture" class="mt-2 text-sm text-ink-muted">{{ t('snapshot.pageMetadataHint') }}</p>
       </div>
       <IntegrityBadge :worm="snapshot.storageWorm" />
     </div>
@@ -190,8 +191,8 @@ onMounted(async () => {
 
     <Card :title="t('snapshot.title')">
       <dl>
-        <DataRow :label="t('snapshot.url')">{{ snapshot.url }}</DataRow>
-        <DataRow :label="t('snapshot.captured')">{{ formatUtc(snapshot.capturedAtUtc) }}</DataRow>
+        <DataRow :label="t(isPageCapture ? 'snapshot.seedUrl' : 'snapshot.url')">{{ snapshot.url }}</DataRow>
+        <DataRow :label="t(isPageCapture ? 'snapshot.crawlStarted' : 'snapshot.captured')">{{ formatUtc(snapshot.capturedAtUtc) }}</DataRow>
         <DataRow :label="t('snapshot.profile')">{{ snapshot.captureProfileVersion?.designation ?? '—' }}</DataRow>
         <DataRow :label="t('snapshot.sequence')">{{ snapshot.chainSequence }}</DataRow>
         <DataRow :label="t('snapshot.entryHash')" mono>{{ snapshot.entryHash }}</DataRow>

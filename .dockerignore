@@ -24,6 +24,7 @@ deploy/data/
 
 # Nothing in the build reads git history, and the directory is large.
 .git/
+.worktrees/
 .github/
 .vs/
 .idea/

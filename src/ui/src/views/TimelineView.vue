@@ -30,10 +30,10 @@ onMounted(async () => {
         <li v-for="snapshot in snapshots" :key="snapshot.id" class="py-3 first:pt-0 last:pb-0">
           <RouterLink :to="`/snapshots/${snapshot.id}`" class="group flex items-baseline gap-4">
             <span class="w-14 shrink-0 text-xs tabular-nums text-ink-muted">#{{ snapshot.chainSequence }}</span>
-            <span class="w-48 shrink-0 text-xs tabular-nums text-ink-muted">
-              {{ formatUtc(snapshot.capturedAtUtc) }}
+            <span class="w-64 shrink-0 text-xs tabular-nums text-ink-muted">
+              {{ t(snapshot.plugin ? 'snapshot.captured' : 'snapshot.crawlStarted') }}: {{ formatUtc(snapshot.capturedAtUtc) }}
             </span>
-            <span class="flex-1 truncate text-sm group-hover:underline">{{ snapshot.url }}</span>
+            <span class="flex-1 truncate text-sm group-hover:underline">{{ t(snapshot.plugin ? 'snapshot.url' : 'snapshot.seedUrl') }}: {{ snapshot.url }}</span>
             <!-- A plugin entry is not a page capture, and the timeline should not imply it is. -->
             <span
               v-if="snapshot.plugin"

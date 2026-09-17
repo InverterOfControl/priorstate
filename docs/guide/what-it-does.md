@@ -26,25 +26,32 @@ drives a real Chromium and writes [WACZ](https://specs.webrecorder.net/wacz/) ar
 interactively through [ReplayWeb.page](https://replayweb.page). Reimplementing that would mean
 defending a home-made capture mechanism in a dispute instead of pointing at an established one.
 
+**Snapshot metadata** for each WACZ stores the first project seed URL and crawl start. A WACZ may
+contain multiple pages; their individual URLs, redirects and request times are not extracted into
+snapshot metadata. Inspect the archive for those records. Periodic captures can bracket an
+observed change, not establish its exact time or continuous availability.
+
 **The ledger** hashes each snapshot over a [fixed canonical form](/reference/canonical-form) and
-links it to its predecessor. The database refuses `UPDATE`, `DELETE` and `TRUNCATE` on ledger
-tables through triggers installed by a migration — so the guarantee is readable in SQL rather than
-promised in application code.
+links it to its predecessor. The default runtime role can insert records and fill permitted
+fields once, but cannot rewrite history or remove protecting triggers. Administrators and Docker
+host operators can still remove those protections; see [database accounts](/operations/database).
 
-**Timestamping** takes a Merkle root over each day's entries to an RFC-3161 authority. The
-returned token proves those entries existed, unaltered, before an attested moment — independently
-of PriorState, its operator, and its storage.
+**Timestamping** checks hourly for pending entries dated before today (UTC), combining them into
+one Merkle tree. A batch can span several days. Manual anchoring includes today's pending entries.
+Entries remain without an external attestation until anchoring succeeds. A valid RFC-3161 token
+attests existence of committed bytes by its signing time; it does not independently verify the
+operator-recorded observation time, source URL or content.
 
-**The evidence package** exports the archive, a protocol PDF, the timestamp token, the Merkle
-audit path and a short `verify.sh` that recomputes everything with `openssl` and `sha256sum`. The
-opposing party checks the claim themselves, offline, without trusting you.
+**The evidence package** exports the archive, protocol PDF, timestamp token, Merkle audit path and
+`verify.sh`. Verification requires a POSIX shell, OpenSSL, sha256sum, xxd and standard Unix tools,
+plus a TSA root certificate authenticated independently of the package. See
+[evidence packages](/guide/evidence-package) for the complete command and dependencies.
 
 ## Deliberately missing
 
-These are absent by design and will not be added. An archive whose operator can remove entries is
-worthless as evidence:
+These operations are absent from the application by design:
 
-- Deleting an individual snapshot
+- Deleting an individual snapshot through the application
 - Shortening a retention period after the fact
 - Switching the timestamp source for existing entries
 - Free-form capture settings — profiles are [named and versioned](/operations/capture-profiles),

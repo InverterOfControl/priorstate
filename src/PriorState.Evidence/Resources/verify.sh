@@ -3,18 +3,11 @@
 # PriorState evidence package verification
 # ========================================
 #
-# This script re-derives every claim the accompanying protocol makes, from the files in this
-# package alone. It contacts no server and trusts nothing about the system that produced the
-# package. If it prints OK at the end, then:
-#
-#   1. The payload file is byte-for-byte the file that was recorded.
-#   2. The recorded metadata (URL, capture time, capture profile, and either the browser
-#      conditions or the plugin that fetched it) hashes to the entry hash committed to the ledger.
-#   3. That entry hash is provably part of the Merkle root for its day.
-#   4. That Merkle root was submitted to an independent timestamp authority, which signed it at
-#      the stated time — so the snapshot existed, in exactly this form, before that moment.
-#   5. For a package produced by a capture plugin: the configuration shipped alongside is exactly
-#      the one the ledger entry commits to.
+# Checks payload and metadata commitments, Merkle inclusion, and an RFC-3161 signature.
+# The recipient must independently authenticate the CA certificates passed via --ca-file.
+# The bundled certificates are operator-supplied chain material, never a trust root by default.
+# A successful check commits these bytes before the signed time; it does not independently
+# establish the URL of origin, capture time, completeness, or truth of operator metadata.
 #
 # There are two kinds of package. A page capture ships snapshot.wacz and records the browser
 # conditions it ran under; a plugin capture ships what an endpoint returned, plus the configuration
@@ -25,15 +18,12 @@
 #
 # Requirements: a POSIX shell, openssl, xxd, and sha256sum (or shasum on macOS).
 #
-# Usage:   sh verify.sh              (from inside the unpacked package)
+# Usage:   sh verify.sh --ca-file /path/to/independently-trusted-ca.pem
 # Exit:    0 = every check passed, 1 = a check failed, 2 = the package is unusable
 #
 # Licence: AGPL-3.0-only, part of PriorState. https://github.com/InverterOfControl/priorstate
 
 set -eu
-
-PACKAGE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-cd "$PACKAGE_DIR"
 
 FAILURES=0
 
@@ -41,6 +31,37 @@ say()  { printf '%s\n' "$*"; }
 pass() { printf '  [ OK ]  %s\n' "$*"; }
 fail() { printf '  [FAIL]  %s\n' "$*"; FAILURES=$((FAILURES + 1)); }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 2; }
+
+usage() {
+  say "Usage: sh verify.sh --ca-file PATH"
+  say "PATH must contain CA certificates independently authenticated by the recipient."
+  say "Relative paths are resolved from your current directory, not the package directory."
+  say "The bundled timestamp/tsa-chain.pem is used only as untrusted chain material."
+  say "Exit codes: 0 checks passed; 1 verification failed; 2 invalid input or package."
+}
+
+CA_FILE=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --ca-file)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || die "--ca-file requires a path."
+      [ -z "$CA_FILE" ] || die "Specify --ca-file only once."
+      CA_FILE="$2"
+      shift 2
+      ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "Unknown argument '$1'. Use --help for usage." ;;
+  esac
+done
+[ -n "$CA_FILE" ] || die "An independently trusted CA file is required. Use --ca-file PATH."
+case "$CA_FILE" in
+  /*) ;;
+  *) CA_FILE="$PWD/$CA_FILE" ;;
+esac
+[ -f "$CA_FILE" ] && [ -r "$CA_FILE" ] || die "CA file is missing or unreadable: $CA_FILE"
+
+PACKAGE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$PACKAGE_DIR"
 
 # --- Tool discovery -----------------------------------------------------------------------
 
@@ -99,7 +120,7 @@ say "PriorState evidence package verification"
 say "========================================"
 say ""
 say "  URL           $(canonical_field url)"
-say "  Captured      $(canonical_field captured_at)"
+say "  Recorded time $(canonical_field captured_at)"
 say "  Profile       $(canonical_field profile)"
 say "  Chain entry   $(canonical_field sequence)"
 say ""
@@ -173,40 +194,19 @@ else
 fi
 say ""
 
-# --- 4. An independent authority attested to that root ---------------------------------------
-#
-# This is the check that does not depend on the archive operator at all. The RFC-3161 token was
-# issued by the timestamp authority named in the protocol, over the Merkle root above. openssl
-# verifies the authority's signature against its certificate chain.
-#
-# If tsa-chain.pem is absent the operator did not ship the authority's certificates; obtain them
-# from the authority named in the protocol and re-run with -CAfile pointing at them.
-
-# token.tsr holds a bare TimeStampToken (the signed CMS structure), not a full TimeStampResp,
-# which is why -token_in is needed below. Without it openssl looks for a response wrapper that
-# is not there and fails with an ASN.1 tag error rather than anything about the signature —
-# reporting a perfectly valid timestamp as invalid.
+# --- 4. Verify the timestamp against the recipient's trust roots -----------------------------
+# token.tsr is a bare TimeStampToken, so -token_in is required. Operator-supplied
+# certificates can help build a chain, but only --ca-file supplies trust anchors.
 say "4. Timestamp"
+set -- -digest "$MERKLE_ROOT" -token_in -in timestamp/token.tsr -CAfile "$CA_FILE"
 if [ -f timestamp/tsa-chain.pem ]; then
-  if openssl ts -verify \
-        -digest "$MERKLE_ROOT" \
-        -token_in \
-        -in timestamp/token.tsr \
-        -CAfile timestamp/tsa-chain.pem >/dev/null 2>&1; then
-    pass "the timestamp token is valid and covers the root"
-  else
-    fail "the timestamp token did NOT verify against timestamp/tsa-chain.pem."
-    say  "          re-run manually for the full reason:"
-    say  "          openssl ts -verify -digest $MERKLE_ROOT \\"
-    say  "            -in timestamp/token.tsr -token_in -CAfile timestamp/tsa-chain.pem"
-  fi
-else
-  fail "timestamp/tsa-chain.pem is missing, so the signature cannot be checked offline."
-  say  "          obtain the authority's certificate chain and re-run:"
-  say  "          openssl ts -verify -digest $MERKLE_ROOT \\"
-  say  "            -in timestamp/token.tsr -token_in -CAfile <chain.pem>"
+  set -- "$@" -untrusted timestamp/tsa-chain.pem
 fi
-
+if openssl ts -verify "$@"; then
+  pass "the timestamp signature covers the root and chains to the supplied trust roots"
+else
+  fail "the timestamp token did NOT verify against the supplied CA file."
+fi
 say ""
 
 # --- 5. The plugin ran under the configuration shipped here ----------------------------------
@@ -233,7 +233,7 @@ if [ "$FORM" = "priorstate-snapshot-v2" ]; then
   ACTUAL_CONFIG="$(sha256_file plugin/configuration.json)"
 
   if [ "$EXPECTED_CONFIG" = "$ACTUAL_CONFIG" ]; then
-    pass "plugin/configuration.json is the configuration that was used"
+    pass "plugin/configuration.json matches the recorded configuration commitment"
   else
     fail "plugin/configuration.json does NOT match."
     say  "          recorded: $EXPECTED_CONFIG"
@@ -247,8 +247,8 @@ fi
 
 say "  Asserted time:  $(openssl ts -reply -in timestamp/token.tsr -token_in -text 2>/dev/null \
                           | sed -n 's/^ *Time stamp: *//p' | head -n 1)"
-say "  Authority:      $(sed -n 's/^tsa_url=//p' manifest.txt | head -n 1)"
-say "  Qualified:      $(sed -n 's/^tsa_qualified=//p' manifest.txt | head -n 1)"
+say "  Authority URL (operator assertion, unverified): $(sed -n 's/^tsa_url=//p' manifest.txt | head -n 1)"
+say "  Qualified status (operator assertion, unverified): $(sed -n 's/^tsa_qualified=//p' manifest.txt | head -n 1)"
 say ""
 
 # --- Result ----------------------------------------------------------------------------------
@@ -256,17 +256,12 @@ say ""
 if [ "$FAILURES" -eq 0 ]; then
   say "RESULT: OK — every check passed."
   say ""
-  say "Note on scope: these checks prove that this payload is unaltered since it was recorded and"
-  say "that it existed before the attested time."
-  if [ "$FORM" = "priorstate-snapshot-v2" ]; then
-    say "They say nothing about whether what the endpoint returned was correct. What is attested is"
-    say "receipt, not truth: that these bytes came back from the URL in canonical/entry.txt, under"
-    say "the configuration in plugin/configuration.json, before the attested time."
-  else
-    say "They say nothing about whether the capture was complete or representative; for that,"
-    say "inspect $PAYLOAD_FILE itself and the capture profile and conditions listed in"
-    say "canonical/entry.txt."
-  fi
+  say "Scope: the payload and recorded metadata match commitments made before the signed time,"
+  say "assuming the supplied CA roots and timestamp authority are trusted."
+  say "This does not prove the bytes came from the stated URL, the exact capture time, or that"
+  say "the capture was complete or representative. Plugin configuration is a recorded assertion,"
+  say "not independent proof that the plugin ran under that configuration."
+  say "The manifest authority URL and qualified status are unverified operator assertions."
   exit 0
 fi
 

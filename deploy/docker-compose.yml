@@ -74,6 +74,25 @@ services:
       - garage-meta:/var/lib/garage/meta:ro
     networks: [priorstate]
 
+  # Administrator credentials are available only to this one-shot bootstrap/migration process.
+  migrate:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+      args:
+        DOCKER_GID: ${DOCKER_GID:-999}
+    image: ghcr.io/inverterofcontrol/priorstate-api:${PRIORSTATE_VERSION:-latest}
+    command: ["--migrate"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      ConnectionStrings__Postgres: >-
+        Host=postgres;Database=${POSTGRES_DB:-priorstate};Username=${POSTGRES_USER:-priorstate};Password=${POSTGRES_PASSWORD}
+      Database__RuntimePassword: ${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD in .env}
+    networks: [priorstate]
   api:
     build:
       context: ..
@@ -85,13 +104,13 @@ services:
     image: ghcr.io/inverterofcontrol/priorstate-api:${PRIORSTATE_VERSION:-latest}
     restart: unless-stopped
     depends_on:
-      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       garage-init: { condition: service_completed_successfully }
     ports:
       - "${PRIORSTATE_PORT:-8080}:8080"
     environment:
       ConnectionStrings__Postgres: >-
-        Host=postgres;Database=${POSTGRES_DB:-priorstate};Username=${POSTGRES_USER:-priorstate};Password=${POSTGRES_PASSWORD}
+        Host=postgres;Database=${POSTGRES_DB:-priorstate};Username=priorstate_app;Password=${POSTGRES_APP_PASSWORD}
       STORAGE__SERVICEURL: ${STORAGE_SERVICE_URL:-http://garage:3900}
       STORAGE__BUCKET: ${STORAGE_BUCKET:-priorstate}
       STORAGE__ACCESSKEY: ${STORAGE_ACCESS_KEY}
@@ -131,11 +150,11 @@ services:
     image: ghcr.io/inverterofcontrol/priorstate-worker:${PRIORSTATE_VERSION:-latest}
     restart: unless-stopped
     depends_on:
-      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       api: { condition: service_started }
     environment:
       ConnectionStrings__Postgres: >-
-        Host=postgres;Database=${POSTGRES_DB:-priorstate};Username=${POSTGRES_USER:-priorstate};Password=${POSTGRES_PASSWORD}
+        Host=postgres;Database=${POSTGRES_DB:-priorstate};Username=priorstate_app;Password=${POSTGRES_APP_PASSWORD}
       STORAGE__SERVICEURL: ${STORAGE_SERVICE_URL:-http://garage:3900}
       STORAGE__BUCKET: ${STORAGE_BUCKET:-priorstate}
       STORAGE__ACCESSKEY: ${STORAGE_ACCESS_KEY}

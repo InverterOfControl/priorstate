@@ -4,14 +4,16 @@ The most consequential setting in PriorState, and the one that cannot be correct
 
 ## What the timestamp does
 
-Once a day, PriorState computes a Merkle root over that day's ledger entries and sends it to an
-RFC-3161 timestamp authority. The authority returns a signed token asserting that it saw that
-exact value at that time.
+Each hour, PriorState gathers unanchored entries dated before the current UTC day and submits
+one Merkle root for that batch to an RFC-3161 timestamp authority. A batch can span several days
+after downtime. Manual anchoring includes today's pending entries. The authority returns a
+signed token asserting that it saw that value at its signing time.
 
 This is the only part of the system that does not depend on you. The hash chain shows internal
 consistency, which is worth something — but an operator who controls the database controls the
 chain. The token is signed by a third party with its own key, and it makes altering any entry in
-that day contradict a signature you cannot forge.
+that batch contradict a signature you cannot forge, provided the recipient independently trusts
+the authority's certificate.
 
 ## The default is not good enough for a dispute
 
@@ -32,9 +34,8 @@ may need to rely on.
 
 ## Configuring a qualified provider
 
-Qualified providers under eIDAS charge per timestamp. PriorState anchors once per day rather than
-once per snapshot specifically to keep that cost bounded — a busy archive and a quiet one cost the
-same.
+Batching completed days usually needs one timestamp per active day, rather than one per snapshot.
+Manual anchoring can create additional timestamp requests.
 
 ```bash
 # deploy/.env
@@ -51,7 +52,10 @@ Then place the provider's certificate chain in `deploy/tsa-chain.pem`. It is cop
 evidence package so the recipient can verify the token **offline, years later**, without the
 authority still being reachable — which for a ten-year retention is not a hypothetical.
 
-For the FreeTSA default:
+The official FreeTSA CA is included for the default configuration. Its source, download digest,
+certificate fingerprint, and replacement procedure are documented in `deploy/tsa-certificates.md`.
+The API checks configured PEM contents at startup and before export; this checks certificate
+material, not provider identity or revocation status. To obtain a fresh copy from the provider:
 
 ```bash
 curl -o deploy/tsa-chain.pem https://freetsa.org/files/cacert.pem
@@ -71,7 +75,13 @@ overnight still anchors. Unanchored entries are the one backlog this system must
 
 ```bash
 openssl ts -reply -in timestamp/token.tsr -token_in -text
-openssl ts -verify -digest <merkle-root-hex> -in timestamp/token.tsr -CAfile tsa-chain.pem
+openssl ts -verify -digest <merkle-root-hex> -in timestamp/token.tsr -token_in \
+  -CAfile /path/to/independently-trusted-ca.pem \
+  -untrusted timestamp/tsa-chain.pem
 ```
 
-This is exactly what `verify.sh` does in step 4, and what an opposing expert will run.
+This is the signature check performed by `sh verify.sh --ca-file PATH` in step 4.
+Omit `-untrusted` if no bundled chain is present and the token already contains its signer chain.
+The manifest authority URL and qualified flag are operator assertions, not facts authenticated
+by this signature. The signature commits bytes before the signed time; it does not establish
+source URL receipt or an exact capture time.
