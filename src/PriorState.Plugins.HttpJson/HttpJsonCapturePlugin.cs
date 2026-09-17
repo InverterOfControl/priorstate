@@ -58,28 +58,31 @@ public sealed partial class HttpJsonCapturePlugin : ICapturePlugin
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var configuration = Parse(context.Binding.ConfigurationJson, context.Binding.Designation);
+        var configuration = ValidateConfiguration(context.Binding.ConfigurationJson, context.Binding.Designation);
         var uri = ValidateUrl(configuration.Url, context.Binding.Designation);
 
         // A plugin is a singleton, so it takes a client from the factory per execution rather than
         // holding one: a captured HttpClient never rotates its handler and pins DNS forever.
         using var http = _httpClientFactory.CreateClient(HttpClientName);
         http.Timeout = _options.Timeout;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(_options.Timeout);
 
         using var request = BuildRequest(configuration, uri, context.Secret);
         using var response = await http.SendAsync(
-            request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
 
         if (!response.IsSuccessStatusCode)
         {
             // Deliberately not archived. A 500 page stored as though it were the data is worse
             // than no entry: the entry would look like a genuine record of what the API returned.
             throw new PluginException(
-                $"{configuration.Method} {uri} returned {(int)response.StatusCode} "
-                + $"{response.ReasonPhrase}. Nothing was archived.");
+                $"HTTP {(int)response.StatusCode}. Nothing was archived. "
+                + "For redirects, configure the destination URL directly.");
         }
 
-        var content = await ReadBoundedAsync(response, uri, cancellationToken);
+        var content = await ReadBoundedAsync(response, uri, deadline.Token);
+        var receivedAt = DateTimeOffset.UtcNow;
         var mediaType = response.Content.Headers.ContentType?.MediaType ?? configuration.Accept;
 
         if (mediaType.Contains("json", StringComparison.OrdinalIgnoreCase))
@@ -91,6 +94,7 @@ public sealed partial class HttpJsonCapturePlugin : ICapturePlugin
 
         return new PluginPayload
         {
+            CapturedAtUtc = receivedAt,
             Url = configuration.Url,
             FinalUrl = response.RequestMessage?.RequestUri is { } final && final != uri ? final.ToString() : null,
             MediaType = mediaType,
@@ -98,7 +102,7 @@ public sealed partial class HttpJsonCapturePlugin : ICapturePlugin
         };
     }
 
-    private static HttpJsonBindingConfiguration Parse(string configurationJson, string designation)
+    public static HttpJsonBindingConfiguration ValidateConfiguration(string configurationJson, string designation)
     {
         HttpJsonBindingConfiguration? configuration;
 
@@ -113,9 +117,50 @@ public sealed partial class HttpJsonCapturePlugin : ICapturePlugin
             throw new PluginException($"The configuration of binding '{designation}' is not valid JSON.", ex);
         }
 
-        return configuration
-            ?? throw new PluginException($"The configuration of binding '{designation}' is empty.");
+        if (configuration is null || !Uri.TryCreate(configuration.Url, UriKind.Absolute, out var uri))
+        {
+            throw new PluginException("Enter an absolute HTTP or HTTPS URL.");
+        }
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            throw new PluginException("Only http and https URLs are supported.");
+        if (!string.IsNullOrEmpty(uri.UserInfo))
+            throw new PluginException("URLs are recorded in every evidence package. Use a secret header instead of credentials embedded in the URL.");
+        if (!string.IsNullOrEmpty(uri.Fragment))
+            throw new PluginException("Remove the URL fragment; it is not sent to the API.");
+        if (configuration.Method is not ("GET" or "POST"))
+            throw new PluginException("API sources support GET and POST only.");
+        if (configuration.Headers is null)
+            throw new PluginException("Headers must be an object.");
+        if (configuration.AuthHeaderName is not null && (!IsHeaderName(configuration.AuthHeaderName)
+            || configuration.AuthHeaderName.Equals("Host", StringComparison.OrdinalIgnoreCase)))
+            throw new PluginException("Enter a valid authentication header name.");
+        if (configuration.AuthValuePrefix?.IndexOfAny(['\r', '\n']) >= 0)
+            throw new PluginException("The authentication prefix cannot contain line breaks.");
+        foreach (var (name, value) in configuration.Headers)
+        {
+            if (!IsHeaderName(name) || value is null || value.IndexOfAny(['\r', '\n']) >= 0)
+                throw new PluginException("Headers must have valid names and single-line values.");
+            if (name.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("Cookie", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("Host", StringComparison.OrdinalIgnoreCase)
+                || name.Equals(configuration.AuthHeaderName, StringComparison.OrdinalIgnoreCase))
+                throw new PluginException("Use the secret reference for authentication headers; Host overrides are not supported.");
+        }
+        try
+        {
+            using var check = BuildRequest(configuration, uri, null);
+            if (configuration.AuthHeaderName is { } authHeader && !check.Headers.TryAddWithoutValidation(authHeader, "validation"))
+                throw new PluginException("The authentication header must be a request header, such as Authorization or X-API-Key.");
+        }
+        catch (FormatException ex)
+        {
+            throw new PluginException("Check the Accept and Content-Type headers.", ex);
+        }
+        return configuration;
     }
+
+    private static bool IsHeaderName(string value) => value.Length > 0
+        && value.All(c => char.IsAsciiLetterOrDigit(c) || "!#$%&'*+-.^_`|~".Contains(c));
 
     private Uri ValidateUrl(string url, string designation)
     {
@@ -140,8 +185,9 @@ public sealed partial class HttpJsonCapturePlugin : ICapturePlugin
                 + "Use a secret header instead.");
         }
 
-        if (_options.AllowedHosts.Count > 0
-            && !_options.AllowedHosts.Contains(uri.Host, StringComparer.OrdinalIgnoreCase))
+        var allowedHosts = _options.AllowedHosts.Where(h => !string.IsNullOrWhiteSpace(h)).Select(h => h.Trim()).ToArray();
+        if (allowedHosts.Length > 0
+            && !allowedHosts.Contains(uri.Host, StringComparer.OrdinalIgnoreCase))
         {
             throw new PluginException(
                 $"Binding '{designation}' targets the host '{uri.Host}', which is not in "
@@ -164,7 +210,8 @@ public sealed partial class HttpJsonCapturePlugin : ICapturePlugin
 
             foreach (var (name, value) in configuration.Headers)
             {
-                request.Headers.TryAddWithoutValidation(name, value);
+                if (!request.Headers.TryAddWithoutValidation(name, value))
+                    throw new PluginException("A configured header is not a request header. Set Content-Type in its dedicated field.");
             }
 
             if (!string.IsNullOrEmpty(configuration.AuthHeaderName) && secret is not null)
@@ -240,8 +287,7 @@ public sealed partial class HttpJsonCapturePlugin : ICapturePlugin
     {
         try
         {
-            var reader = new Utf8JsonReader(content);
-            using var _ = JsonDocument.ParseValue(ref reader);
+            using var _ = JsonDocument.Parse(content);
         }
         catch (JsonException ex)
         {

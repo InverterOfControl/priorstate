@@ -47,4 +47,5 @@ public enum AuditAction
     TimestampAnchorCreated = 13,
     PluginBindingVersionCreated = 14,
     PluginBindingRetired = 15,
+    SourceTestRequested = 16,
 }

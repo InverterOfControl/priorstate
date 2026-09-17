@@ -10,9 +10,8 @@ public static class HttpJsonServiceCollectionExtensions
     /// <summary>
     /// Registers the HTTP JSON capture plugin.
     ///
-    /// Uses AddHttpClient with the standard resilience handler, the same way the timestamp
-    /// authority client is registered: a transient failure reaching an ERP should be retried
-    /// before it becomes a recorded plugin failure.
+    /// Uses a single bounded request. Redirects and transparent retries are disabled so the
+    /// worker does not forward credentials or repeat a POST without the operator asking.
     /// </summary>
     public static IServiceCollection AddHttpJsonCapturePlugin(
         this IServiceCollection services,
@@ -22,10 +21,19 @@ public static class HttpJsonServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddOptions<HttpJsonOptions>()
-            .Bind(configuration.GetSection(HttpJsonOptions.SectionName));
+            .Bind(configuration.GetSection(HttpJsonOptions.SectionName))
+            .PostConfigure(options =>
+            {
+                var hosts = options.AllowedHosts.Where(h => !string.IsNullOrWhiteSpace(h))
+                    .Select(h => h.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                options.AllowedHosts.Clear();
+                foreach (var host in hosts) options.AllowedHosts.Add(host);
+            });
 
         services.AddHttpClient(HttpJsonCapturePlugin.HttpClientName)
-            .AddStandardResilienceHandler();
+            // A redirect could leave the host allowlist or leak a custom authentication header.
+            // Do not transparently retry POST requests: a test must issue exactly one request.
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 
         // TryAddEnumerable directly rather than through PriorState.Plugins: a plugin depends on
         // the abstractions and nothing else, which is what makes the seam worth having.

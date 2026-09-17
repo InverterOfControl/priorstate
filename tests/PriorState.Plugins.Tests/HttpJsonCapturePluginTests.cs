@@ -137,6 +137,66 @@ public sealed class HttpJsonCapturePluginTests
         Assert.Equal("https://erp.internal/api/prices/v2", payload.FinalUrl);
     }
 
+    [Fact]
+    public async Task BlankComposeAllowlistEntriesDoNotBlockRequests()
+    {
+        var plugin = Plugin(Responder("{}", "application/json"), allowedHosts: ["", "  ", ""]);
+        var payload = await plugin.ExecuteAsync(Context());
+        Assert.NotNull(payload.CapturedAtUtc);
+    }
+
+    [Fact]
+    public async Task ConfiguredHeadersAreActuallySent()
+    {
+        string? header = null;
+        var plugin = Plugin(request =>
+        {
+            header = request.Headers.GetValues("X-Tenant").Single();
+            return Respond("{}", "application/json");
+        });
+        var context = Context();
+        context.Binding.ConfigurationJson = """{"url":"https://erp.internal/api/prices","headers":{"X-Tenant":"shop-a"}}""";
+        await plugin.ExecuteAsync(context);
+        Assert.Equal("shop-a", header);
+    }
+
+    [Fact]
+    public async Task RejectsTrailingGarbageAfterJson()
+    {
+        var plugin = Plugin(Responder("{} not-json", "application/json"));
+        await Assert.ThrowsAsync<PluginException>(() => plugin.ExecuteAsync(Context()));
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"url\":\"https://example.test\",\"method\":\"DELETE\"}")]
+    [InlineData("{\"url\":\"https://example.test\",\"headers\":{\"Authorization\":\"secret\"}}")]
+    [InlineData("{\"url\":\"https://example.test\",\"authHeaderName\":\"bad header\"}")]
+    public void InvalidSettingsAreRejectedBeforeExecution(string json)
+    {
+        Assert.Throws<PluginException>(() => HttpJsonCapturePlugin.ValidateConfiguration(json, "test"));
+    }
+
+    [Fact]
+    public async Task TimeoutAlsoCoversReadingTheResponseBody()
+    {
+        var plugin = Plugin(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StreamContent(new StalledStream()),
+        }, timeout: TimeSpan.FromMilliseconds(50));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            plugin.ExecuteAsync(Context()).WaitAsync(TimeSpan.FromSeconds(3)));
+    }
+
+    private sealed class StalledStream : MemoryStream
+    {
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
+    }
+
     // --- helpers ---
 
     private static Func<HttpRequestMessage, HttpResponseMessage> Responder(string body, string mediaType) =>
@@ -153,9 +213,11 @@ public sealed class HttpJsonCapturePluginTests
     private static HttpJsonCapturePlugin Plugin(
         Func<HttpRequestMessage, HttpResponseMessage> responder,
         string[]? allowedHosts = null,
-        long maxPayloadBytes = 32 * 1024 * 1024)
+        long maxPayloadBytes = 32 * 1024 * 1024,
+        TimeSpan? timeout = null)
     {
         var options = new HttpJsonOptions { MaxPayloadBytes = maxPayloadBytes };
+        if (timeout is { } limit) options.Timeout = limit;
 
         foreach (var host in allowedHosts ?? [])
         {

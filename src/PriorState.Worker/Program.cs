@@ -32,6 +32,7 @@ builder.Services.AddPriorStatePlugins();
 builder.Services.AddHttpJsonCapturePlugin(builder.Configuration);
 
 builder.Services.AddHostedService<CrawlWorker>();
+builder.Services.AddHostedService<SourceTestWorker>();
 builder.Services.AddHostedService<ScheduleWorker>();
 builder.Services.AddHostedService<TimestampAnchorWorker>();
 

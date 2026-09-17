@@ -17,6 +17,7 @@ src/PriorState.Api/wwwroot/
 # Local secrets and runtime data. deploy/.env holds the compose credentials and has no business
 # being uploaded as build context; .env.example is the file that belongs in an image or a repo.
 deploy/.env
+deploy/secrets.env
 deploy/data/
 **/.env
 **/.env.local

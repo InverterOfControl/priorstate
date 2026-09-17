@@ -50,7 +50,7 @@ public sealed class HttpJsonBindingConfiguration
     public string Method { get; set; } = "GET";
 
     /// <summary>Static request headers. Values are recorded in the configuration; keep secrets out.</summary>
-    public Dictionary<string, string> Headers { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Request body, for a POST. Sent as-is with <see cref="ContentType"/>.</summary>
     public string? Body { get; set; }

@@ -57,6 +57,8 @@ public sealed class RuntimeDatabaseRoleTests : IClassFixture<PostgresFixture>
         run.FinishedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
         var binding = await PostgresFixture.SeedPluginBindingAsync(db);
+        db.SourceExecutions.Add(new Domain.Entities.SourceExecution { BindingId = binding.Id });
+        await db.SaveChangesAsync();
         var now = DateTimeOffset.UtcNow;
         await db.Database.ExecuteSqlAsync($"UPDATE plugin_binding_versions SET \"SupersededAt\" = {now} WHERE \"Id\" = {binding.Id}");
         var error = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlAsync(

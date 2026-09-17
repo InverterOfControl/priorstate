@@ -158,6 +158,16 @@ export interface RunSummary {
   captureProfile: string
   snapshotCount: number
   failureReason: string | null
+  pluginFailures: string[]
+}
+
+export interface RunSources {
+  sources: Array<{
+    id: string; bindingId: string; name: string; required: boolean; state: string
+    startedAt: string | null; finishedAt: string | null; snapshotId: string | null
+    sizeBytes: number | null; mediaType: string | null; error: string | null
+  }>
+  snapshots: Array<{ id: string; url: string; capturedAtUtc: string; chainSequence: number; bindingId: string | null }>
 }
 
 export interface AuditEntry {

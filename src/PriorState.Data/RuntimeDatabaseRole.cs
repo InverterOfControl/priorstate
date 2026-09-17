@@ -40,7 +40,7 @@ public static class RuntimeDatabaseRole
             GRANT UPDATE ("TimestampAnchorId") ON snapshots TO priorstate_app;
             GRANT UPDATE ("SupersededAt") ON capture_profile_versions, plugin_binding_versions TO priorstate_app;
             GRANT UPDATE ("RunId") ON deployment_ledger_entries TO priorstate_app;
-            GRANT SELECT, INSERT, UPDATE, DELETE ON projects, runs, crawl_jobs,
+            GRANT SELECT, INSERT, UPDATE, DELETE ON projects, runs, crawl_jobs, source_executions,
                 "AspNetUsers", "AspNetRoles", "AspNetUserClaims", "AspNetRoleClaims",
                 "AspNetUserLogins", "AspNetUserRoles", "AspNetUserTokens" TO priorstate_app;
             GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO priorstate_app;

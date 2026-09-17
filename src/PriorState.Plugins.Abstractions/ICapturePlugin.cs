@@ -75,6 +75,8 @@ public sealed record PluginExecutionContext
 /// <summary>What a plugin returns. The host does everything else with it.</summary>
 public sealed record PluginPayload
 {
+    /// <summary>Time the response was fully received, before storage or ledger work.</summary>
+    public DateTimeOffset? CapturedAtUtc { get; init; }
     /// <summary>
     /// The resource that was read, as requested. Enters the canonical form and is therefore
     /// permanently visible in every evidence package — it must not carry credentials.

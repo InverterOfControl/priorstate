@@ -67,7 +67,7 @@ public sealed partial class CrawlWorker : BackgroundService
         }
     }
 
-    private async Task<bool> TryProcessOneAsync(CancellationToken cancellationToken)
+    internal async Task<bool> TryProcessOneAsync(CancellationToken cancellationToken)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<PriorStateDbContext>();
@@ -87,7 +87,8 @@ public sealed partial class CrawlWorker : BackgroundService
             .FirstAsync(r => r.Id == job.RunId, cancellationToken);
 
         run.Status = RunStatus.Running;
-        run.StartedAt = DateTimeOffset.UtcNow;
+        run.StartedAt ??= DateTimeOffset.UtcNow;
+        run.FailureReason = null;
         await db.SaveChangesAsync(cancellationToken);
 
         try
@@ -95,7 +96,10 @@ public sealed partial class CrawlWorker : BackgroundService
             var project = run.Project!;
             var profile = run.CaptureProfileVersion!;
 
-            var outcome = await _crawler.CaptureAsync(
+            var retention = TimeSpan.FromDays(365.25 * project.RetentionYears);
+            var attemptStartedAt = DateTimeOffset.UtcNow;
+            var sourceTask = plugins.RunAsync(run, profile, retention, cancellationToken);
+            var crawlTask = _crawler.CaptureAsync(
                 new CrawlRequest
                 {
                     RunId = run.Id,
@@ -106,6 +110,12 @@ public sealed partial class CrawlWorker : BackgroundService
                 },
                 cancellationToken);
 
+            // Both operations start together; only the source runner uses this DbContext while
+            // the browser is running. Always await both, even when the browser fails.
+            await Task.WhenAll(sourceTask, crawlTask);
+            run.PluginFailures = [.. await sourceTask];
+            var outcome = await crawlTask;
+
             run.CrawlerArguments = [.. outcome.Arguments];
             run.CrawlerExitCode = outcome.ExitCode;
 
@@ -115,21 +125,27 @@ public sealed partial class CrawlWorker : BackgroundService
                 return true;
             }
 
-            var retention = TimeSpan.FromDays(365.25 * project.RetentionYears);
-
             foreach (var waczPath in outcome.WaczPaths)
             {
-                await AppendSnapshotAsync(ledger, run, profile, waczPath, outcome, retention, cancellationToken);
+                await AppendSnapshotAsync(ledger, run, profile, waczPath, outcome, retention, job.Attempts, attemptStartedAt, cancellationToken);
             }
 
-            // Plugins run only once the page captures are in the ledger. A crawl produces the one
-            // thing that cannot be fetched again later, and no plugin should be able to cost it.
-            // A binding marked Required throws from here and fails the run through FailAsync.
-            run.PluginFailures = [.. await plugins.RunAsync(run, profile, retention, cancellationToken)];
-
-            run.Status = RunStatus.Succeeded;
+            var requiredFailed = await db.SourceExecutions.AnyAsync(e => e.RunId == run.Id
+                && e.State == SourceExecutionState.Failed && e.Binding!.Required, cancellationToken);
+            if (requiredFailed)
+            {
+                // Captures already archived stay intact. Do not re-crawl the website merely
+                // because a required API is down; a new capture is an explicit new run.
+                run.FailureReason = "A required API source failed. See the source results; successful captures were retained.";
+                run.Status = RunStatus.Failed;
+                job.State = CrawlJobState.Failed;
+            }
+            else
+            {
+                run.Status = run.PluginFailures.Count > 0 ? RunStatus.PartiallySucceeded : RunStatus.Succeeded;
+                job.State = CrawlJobState.Completed;
+            }
             run.FinishedAt = DateTimeOffset.UtcNow;
-            job.State = CrawlJobState.Completed;
             await db.SaveChangesAsync(cancellationToken);
 
             LogRunCompleted(run.Id, outcome.WaczPaths.Count);
@@ -152,9 +168,11 @@ public sealed partial class CrawlWorker : BackgroundService
         string waczPath,
         CrawlOutcome outcome,
         TimeSpan retention,
+        int attempt,
+        DateTimeOffset attemptStartedAt,
         CancellationToken cancellationToken)
     {
-        var objectKey = $"projects/{run.ProjectId:n}/runs/{run.Id:n}/{Path.GetFileName(waczPath)}";
+        var objectKey = $"projects/{run.ProjectId:n}/runs/{run.Id:n}/attempt-{attempt}/{Path.GetFileName(waczPath)}";
 
         await using var file = File.OpenRead(waczPath);
         var stored = await _storage.PutAsync(objectKey, file, WaczMediaType, retention, cancellationToken);
@@ -163,7 +181,7 @@ public sealed partial class CrawlWorker : BackgroundService
         {
             RunId = run.Id,
             Url = run.Project!.SeedUrls.FirstOrDefault() ?? string.Empty,
-            CapturedAtUtc = run.StartedAt ?? DateTimeOffset.UtcNow,
+            CapturedAtUtc = attemptStartedAt,
             PayloadSha256 = stored.Sha256,
             PayloadObjectKey = stored.Key,
             PayloadSizeBytes = stored.SizeBytes,

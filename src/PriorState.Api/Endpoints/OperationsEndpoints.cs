@@ -34,8 +34,28 @@ public static class OperationsEndpoints
                     r.FinishedAt,
                     r.CaptureProfileVersion!.Designation,
                     r.Snapshots.Count,
-                    r.FailureReason))
+                    r.FailureReason,
+                    r.PluginFailures))
                 .ToListAsync(ct);
+        });
+
+        group.MapGet("/{id:guid}/sources", async (Guid id, PriorStateDbContext db, CancellationToken ct) =>
+        {
+            if (!await db.Runs.AnyAsync(r => r.Id == id, ct)) return Results.NotFound();
+            var sources = await db.SourceExecutions.AsNoTracking().Where(e => e.RunId == id)
+                .OrderBy(e => e.Binding!.Name)
+                .Select(e => new
+                {
+                    e.Id, e.BindingId, Name = e.Binding!.Designation, e.Binding.Required,
+                    e.State, e.StartedAt, e.FinishedAt, e.SnapshotId, e.SizeBytes, e.MediaType, e.Error,
+                }).ToListAsync(ct);
+            var snapshots = await db.Snapshots.AsNoTracking().Where(s => s.RunId == id)
+                .OrderBy(s => s.ChainSequence).Select(s => new
+                {
+                    s.Id, s.Url, s.CapturedAtUtc, s.ChainSequence,
+                    BindingId = s.PluginBindingVersionId,
+                }).ToListAsync(ct);
+            return Results.Ok(new { sources, snapshots });
         });
 
         group.MapGet("/{id:guid}", async (Guid id, PriorStateDbContext db, CancellationToken ct) =>
@@ -181,7 +201,8 @@ public sealed record RunSummary(
     DateTimeOffset? FinishedAt,
     string CaptureProfile,
     int SnapshotCount,
-    string? FailureReason);
+    string? FailureReason,
+    IReadOnlyList<string> PluginFailures);
 
 public sealed record TriggerRunRequest(Guid ProjectId);
 

@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
 import DataRow from '@/components/ui/DataRow.vue'
 import ProjectForm from '@/components/ProjectForm.vue'
+import ApiSources from '@/components/ApiSources.vue'
 
 const { t } = useI18n()
 const projects = ref<ProjectSummary[]>([])
@@ -98,6 +99,7 @@ onMounted(async () => {
           {{ triggering === project.id ? t('auth.working') : t('projects.trigger') }}
         </Button>
       </div>
+      <div class="mt-5"><ApiSources :project-id="project.id" /></div>
     </Card>
   </div>
 </template>

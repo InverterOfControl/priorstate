@@ -46,6 +46,7 @@ public sealed class Run
     public List<string> PluginFailures { get; set; } = [];
 
     public List<Snapshot> Snapshots { get; set; } = [];
+    public List<SourceExecution> SourceExecutions { get; set; } = [];
 }
 
 public enum RunTrigger
@@ -61,4 +62,5 @@ public enum RunStatus
     Running = 1,
     Succeeded = 2,
     Failed = 3,
+    PartiallySucceeded = 4,
 }

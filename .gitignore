@@ -30,6 +30,7 @@ docs/.vitepress/dist/
 # Environment and secrets — never commit these
 .env
 .env.local
+deploy/secrets.env
 *.pem
 *.key
 !deploy/.env.example

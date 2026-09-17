@@ -142,6 +142,9 @@ services:
     networks: [priorstate]
 
   worker:
+    env_file:
+      - path: ./secrets.env
+        required: false
     build:
       context: ..
       dockerfile: deploy/Dockerfile.worker
@@ -171,8 +174,8 @@ services:
       CRAWLER__WORKERS: ${CRAWLER_WORKERS:-2}
       CRAWLER__PAGELIMIT: ${CRAWLER_PAGE_LIMIT:-500}
       CRAWLER__DELAYBETWEENPAGESSECONDS: ${CRAWLER_DELAY_SECONDS:-1}
-      # Capture plugins. The allowlist is comma-separated in .env and expanded into the indexed
-      # form the configuration binder expects; leaving it empty lets a binding reach any host this
+      # API sources. One host per indexed variable; blank entries are ignored.
+      # Leaving all entries empty lets a source reach any host this
       # container can, which matters because this container also holds the Docker socket.
       PLUGINS__HTTPJSON__ALLOWEDHOSTS__0: ${PLUGIN_HTTP_ALLOWED_HOST_0:-}
       PLUGINS__HTTPJSON__ALLOWEDHOSTS__1: ${PLUGIN_HTTP_ALLOWED_HOST_1:-}

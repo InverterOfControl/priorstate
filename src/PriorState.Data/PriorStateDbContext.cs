@@ -35,6 +35,7 @@ public sealed class PriorStateDbContext : IdentityDbContext<ApplicationUser>
 
     /// <summary>Versioned plugin configuration. Append-only, like capture profiles.</summary>
     public DbSet<PluginBindingVersion> PluginBindingVersions => Set<PluginBindingVersion>();
+    public DbSet<SourceExecution> SourceExecutions => Set<SourceExecution>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

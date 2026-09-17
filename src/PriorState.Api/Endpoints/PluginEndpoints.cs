@@ -6,6 +6,8 @@ using PriorState.Data;
 using PriorState.Domain.Entities;
 using PriorState.Ledger;
 using PriorState.Plugins;
+using PriorState.Plugins.Abstractions;
+using PriorState.Plugins.HttpJson;
 
 namespace PriorState.Api.Endpoints;
 
@@ -97,6 +99,22 @@ public static class PluginEndpoints
                     statusCode: 400);
             }
 
+            if (request.PluginId == "http-json")
+            {
+                try
+                {
+                    var config = HttpJsonCapturePlugin.ValidateConfiguration(request.ConfigurationJson, request.Name);
+                    if (string.IsNullOrWhiteSpace(config.AuthHeaderName) != string.IsNullOrWhiteSpace(request.SecretRef))
+                        return Results.Problem("Authentication requires both a header name and a worker secret reference.", statusCode: 400);
+                }
+                catch (PluginException ex)
+                {
+                    return Results.Problem(ex.Message, statusCode: 400);
+                }
+            }
+            if (request.Name.Length > 120 || request.Rationale.Length > 2000 || request.ConfigurationJson.Length > 65536)
+                return Results.Problem("Name, rationale or request configuration is too long.", statusCode: 400);
+
             // The name is recorded, the value never is. Rejecting anything outside the reserved
             // prefix stops a binding being pointed at the database connection string.
             if (request.SecretRef is { Length: > 0 } && !PluginSecretResolver.IsValidSecretRef(request.SecretRef))
@@ -143,6 +161,33 @@ public static class PluginEndpoints
                 binding.Id.ToString(), $"{binding.PluginId} / {binding.Designation}", ct);
 
             return Results.Created($"/api/plugin-bindings/{binding.Id}", Describe(binding));
+        });
+
+        bindings.MapPost("/{id:guid}/test", async (Guid id, PriorStateDbContext db, AuditLog audit, CancellationToken ct) =>
+        {
+            var binding = await db.PluginBindingVersions.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id, ct);
+            if (binding is null) return Results.NotFound();
+            if (binding.SupersededAt is not null)
+                return Results.Problem("Test the current version of this API source.", statusCode: 409);
+            var pending = await db.SourceExecutions.AsNoTracking().FirstOrDefaultAsync(e => e.BindingId == id
+                && e.RunId == null && (e.State == SourceExecutionState.Queued || e.State == SourceExecutionState.Running), ct);
+            if (pending is not null)
+                return Results.Accepted($"/api/plugin-bindings/tests/{pending.Id}", DescribeTest(pending));
+            var test = new SourceExecution { BindingId = id };
+            db.SourceExecutions.Add(test);
+            try { await db.SaveChangesAsync(ct); }
+            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+            {
+                return Results.Problem("A test is already queued for this source. Refresh its result.", statusCode: 409);
+            }
+            await audit.RecordAsync(AuditAction.SourceTestRequested, nameof(PluginBindingVersion), id.ToString(), binding.Designation, ct);
+            return Results.Accepted($"/api/plugin-bindings/tests/{test.Id}", DescribeTest(test));
+        });
+
+        bindings.MapGet("/tests/{id:guid}", async (Guid id, PriorStateDbContext db, CancellationToken ct) =>
+        {
+            var test = await db.SourceExecutions.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id && e.RunId == null, ct);
+            return test is null ? Results.NotFound() : Results.Ok(DescribeTest(test));
         });
 
         // Retiring is superseding without a successor. There is no delete: "this stopped running
@@ -197,6 +242,12 @@ public static class PluginEndpoints
             return false;
         }
     }
+
+    private static object DescribeTest(SourceExecution test) => new
+    {
+        test.Id, test.State, test.QueuedAt, test.StartedAt, test.FinishedAt,
+        test.SizeBytes, test.MediaType, test.Error,
+    };
 
     private static PluginBindingSummary Describe(PluginBindingVersion b) => new(
         b.Id, b.ProjectId, b.PluginId, b.Name, b.Version, b.Designation, b.ConfigurationJson,
