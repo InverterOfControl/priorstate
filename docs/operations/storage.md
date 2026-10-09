@@ -2,7 +2,9 @@
 
 ## The short version
 
-PriorState ships Garage as the default object store. **Garage does not implement S3 Object Lock**,
+PriorState uses configurable S3-compatible storage. Garage is bundled with Docker Compose for
+local development, testing and evaluation because it is lightweight and easy to run. Production
+can use AWS S3 or another compatible provider without application code changes. **Garage does not implement S3 Object Lock**,
 so the bundled configuration has no storage-level WORM. That is a supported configuration, not a
 broken one — but you should understand exactly what it does and does not change before you rely
 on the system.
@@ -42,9 +44,18 @@ assumed**. At startup PriorState:
 
 1. Asks the bucket for its Object Lock configuration. If there is none, the result is `Unsupported`.
 2. Writes a small scratch object with a COMPLIANCE-mode retention one minute in the future.
-3. Tries to delete it.
-   - Delete refused → `Enforced`.
-   - Delete succeeded → `ApiPresentUnverified`. The backend accepted the retention and ignored it.
+3. Captures its version ID and reads that version's COMPLIANCE retention back.
+4. Uploads an unprotected control object and deletes its exact version to check deletion permissions.
+5. Tries to delete the protected version by ID.
+   - `AccessDenied` (HTTP 403) after those checks pass: `Enforced`.
+   - Successful deletion, missing version IDs, mismatched retention or other probe errors:
+     `ApiPresentUnverified`.
+
+A general permission error is not proof of retention enforcement. The control checks ordinary
+version deletion, but cannot rule out every object-specific IAM policy. Use equivalent permissions
+for both probe objects. Bucket default retention can also protect the control version; in that
+case the result remains `ApiPresentUnverified`. Protected probe objects require separate cleanup
+after retention expires; expiration does not automatically delete them.
 
 The result is stored **on every snapshot row**, shown in the interface, reported on `/health`, and
 printed on every evidence protocol. Nothing claims protection that was not applied.
@@ -54,6 +65,38 @@ printed on every evidence protocol. Nothing claims protection that was not appli
 **Evaluating, or a small internal archive.** The bundled Garage is fine. Understand that the
 single-node configuration also has no redundancy: one disk failure loses the WACZ files. The
 ledger and timestamps would still prove what existed, but you would not be able to produce it.
+
+### Production with AWS S3
+
+API and worker use the same configurable S3 client behind `IObjectStore`. For an existing AWS S3
+bucket in Frankfurt, configure both services through `deploy/.env`:
+
+```bash
+STORAGE_SERVICE_URL=https://s3.eu-central-1.amazonaws.com
+STORAGE_REGION=eu-central-1
+STORAGE_BUCKET=your-archive-bucket
+STORAGE_ACCESS_KEY=...
+STORAGE_SECRET_KEY=...
+```
+
+Choose the [regional S3 endpoint](https://docs.aws.amazon.com/general/latest/gr/s3.html) matching
+your bucket. Outside Compose, set the corresponding `Storage` options for both services; see
+[Configuration](/reference/configuration). The default `Storage:ForcePathStyle=true` works with
+AWS S3 general purpose buckets. The current client requires access and secret keys; it does not
+use the AWS default credential chain, IAM roles or session tokens.
+
+**Compose limitation:** the bundled file still starts `garage` and `garage-init`, and the API
+still depends on `garage-init`. For production without Garage, use a separate Compose file that
+omits those services and that dependency. Changing the endpoint redirects application storage;
+it does not migrate existing objects. Keep the original storage accessible or migrate separately.
+
+The WORM probe deletes the specific uploaded version, so AWS delete markers no longer cause a
+false negative. See [AWS Object Lock behaviour](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html).
+Its credentials need `s3:GetBucketObjectLockConfiguration`, `s3:GetObjectRetention`, `s3:PutObject`,
+`s3:PutObjectRetention` and `s3:DeleteObjectVersion`; startup also reads the bucket location.
+If the probe remains `ApiPresentUnverified`, PriorState still requests COMPLIANCE retention
+on archive uploads when Object Lock is advertised. Bucket default retention or insufficient
+probe permissions can prevent verification as described above.
 
 **Anything you may need to rely on.** Use a backend that enforces Object Lock, and create the
 bucket with Object Lock enabled — on most implementations that can only be done at creation time.

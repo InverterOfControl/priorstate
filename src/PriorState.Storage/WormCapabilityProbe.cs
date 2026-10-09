@@ -20,8 +20,8 @@ namespace PriorState.Storage;
 ///
 ///   1. Ask the bucket for its object-lock configuration. No configuration means Unsupported.
 ///   2. Write a small scratch object with a COMPLIANCE-mode retention a minute into the future.
-///   3. Try to delete it. If the backend refuses, retention is Enforced. If the delete succeeds,
-///      the API is present but does nothing, which is recorded as ApiPresentUnverified.
+///   3. Read the version's retention and prove deletion permissions using an unprotected version.
+///   4. Delete the protected version by ID. Only AccessDenied after those checks earns Enforced.
 ///
 /// The outcome is stored on every snapshot and printed in every evidence package. A snapshot
 /// whose storage never enforced WORM is still fully provable — the hash chain and the RFC-3161
@@ -90,50 +90,97 @@ public sealed partial class WormCapabilityProbe
 
     private async Task<WormSupport> ProbeEnforcementAsync(string bucket, CancellationToken cancellationToken)
     {
-        var key = ProbeKeyPrefix + DateTime.UtcNow.ToString("yyyyMMddTHHmmssfff", CultureInfo.InvariantCulture);
+        var key = ProbeKeyPrefix + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
         var retainUntil = DateTime.UtcNow.Add(ProbeRetention);
 
         try
         {
             using var body = new MemoryStream(Encoding.UTF8.GetBytes(
-                "PriorState WORM enforcement probe. Safe to ignore; expires within a minute."));
+                "PriorState WORM enforcement probe. Retention expires within a minute."));
+            var upload = await _s3.PutObjectAsync(new PutObjectRequest
+            {
+                BucketName = bucket,
+                Key = key,
+                InputStream = body,
+                ContentType = "text/plain",
+                ObjectLockMode = ObjectLockMode.Compliance,
+                ObjectLockRetainUntilDate = retainUntil,
+            }, cancellationToken);
 
-            await _s3.PutObjectAsync(
-                new PutObjectRequest
+            if (string.IsNullOrWhiteSpace(upload.VersionId))
+                return Unverified("The protected upload returned no version ID.");
+
+            var retention = await _s3.GetObjectRetentionAsync(new GetObjectRetentionRequest
+            {
+                BucketName = bucket, Key = key, VersionId = upload.VersionId,
+            }, cancellationToken);
+            if (retention.Retention?.Mode != ObjectLockRetentionMode.Compliance
+                || retention.Retention.RetainUntilDate is not { } actualDate
+                || actualDate < retainUntil.AddSeconds(-1)
+                || actualDate <= DateTime.UtcNow)
+                return Unverified("The protected version did not retain the requested COMPLIANCE retention.");
+
+            // Prove the same credentials can delete an unprotected version. Otherwise an IAM
+            // denial could be mistaken for retention enforcement. Bucket default retention may
+            // protect the control as well; in that case we deliberately leave the result unverified.
+            var controlKey = key + "-control";
+            using var controlBody = new MemoryStream(Encoding.UTF8.GetBytes("PriorState deletion permission probe."));
+            var control = await _s3.PutObjectAsync(new PutObjectRequest
+            {
+                BucketName = bucket, Key = controlKey, InputStream = controlBody,
+                ContentType = "text/plain",
+            }, cancellationToken);
+            if (string.IsNullOrWhiteSpace(control.VersionId))
+                return Unverified("The control upload returned no version ID.");
+
+            var controlRetention = await _s3.GetObjectRetentionAsync(new GetObjectRetentionRequest
+            {
+                BucketName = bucket, Key = controlKey, VersionId = control.VersionId,
+            }, cancellationToken);
+            if (controlRetention.Retention?.RetainUntilDate is { } controlDate && controlDate > DateTime.UtcNow)
+                return Unverified("Bucket default retention protects the control version too.");
+
+            await _s3.DeleteObjectAsync(new DeleteObjectRequest
+            {
+                BucketName = bucket, Key = controlKey, VersionId = control.VersionId,
+            }, cancellationToken);
+
+            if (actualDate <= DateTime.UtcNow)
+                return Unverified("The probe retention expired before the protected delete.");
+
+            try
+            {
+                await _s3.DeleteObjectAsync(new DeleteObjectRequest
                 {
-                    BucketName = bucket,
-                    Key = key,
-                    InputStream = body,
-                    ContentType = "text/plain",
-                    ObjectLockMode = ObjectLockMode.Compliance,
-                    ObjectLockRetainUntilDate = retainUntil,
-                },
-                cancellationToken);
+                    BucketName = bucket, Key = key, VersionId = upload.VersionId,
+                }, cancellationToken);
+            }
+            catch (AmazonS3Exception ex) when (
+                ex.StatusCode == System.Net.HttpStatusCode.Forbidden && ex.ErrorCode == "AccessDenied"
+                && actualDate > DateTime.UtcNow)
+            {
+                LogWormEnforced();
+                return WormSupport.Enforced;
+            }
+
+            LogWormNotEnforced();
+            return WormSupport.ApiPresentUnverified;
         }
         catch (AmazonS3Exception ex)
         {
-            LogProbeWriteRejected(ex.Message);
-            return WormSupport.Unsupported;
+            return Unverified(ex.Message);
         }
+    }
 
-        try
-        {
-            await _s3.DeleteObjectAsync(
-                new DeleteObjectRequest { BucketName = bucket, Key = key },
-                cancellationToken);
-        }
-        catch (AmazonS3Exception)
-        {
-            // The delete was refused, which is exactly what retention is supposed to do.
-            LogWormEnforced();
-            return WormSupport.Enforced;
-        }
-
-        // The delete succeeded despite a COMPLIANCE-mode retention in the future. The backend
-        // accepted the retention setting and then ignored it.
-        LogWormNotEnforced();
+    private WormSupport Unverified(string reason)
+    {
+        LogProbeUnverified(reason);
         return WormSupport.ApiPresentUnverified;
     }
+
+    [LoggerMessage(EventId = 2006, Level = LogLevel.Warning,
+        Message = "Object Lock enforcement could not be verified: {Reason}. Recording ApiPresentUnverified.")]
+    private partial void LogProbeUnverified(string reason);
 
     [LoggerMessage(
         EventId = 2000,
