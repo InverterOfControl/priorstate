@@ -115,5 +115,6 @@ produced.
 
 ## Database
 
-`ConnectionStrings:Postgres`. Migrations are applied automatically at API startup, along with the
-seeded `DE-Standard v1` capture profile.
+`ConnectionStrings:Postgres`. Migrations and the seeded `DE-Standard v1` capture profile are
+applied by the one-shot `--migrate` startup. Normal API startup does not apply migrations.
+See [Database accounts and upgrades](/operations/database).

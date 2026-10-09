@@ -1,16 +1,16 @@
-# Verfahrensdokumentation — Vorlage
+# Verfahrensdokumentation: Vorlage
 
 > **Zum Gebrauch dieser Vorlage.** Dieses Dokument ist eine ausfüllbare Vorlage, keine
 > Rechtsberatung. Kopieren Sie es in Ihre eigene Ablage, füllen Sie die mit `…` markierten Stellen
 > aus, streichen Sie, was nicht zutrifft, und lassen Sie es vor dem Ernstfall anwaltlich prüfen.
 >
-> Diese Vorlage ist bewusst auf Deutsch gehalten. Der übrige Quelltext und die Dokumentation von
-> PriorState sind englisch; die Verfahrensdokumentation und das Erfassungsprotokoll sind die
-> beiden Ausnahmen, weil sie für eine bestimmte Rechtsordnung geschrieben sind.
+> Diese Vorlage und das Erfassungsprotokoll sind auf Deutsch gehalten, weil sie für die
+> Verwendung in Deutschland gedacht sind. Die übrige Dokumentation ist auf Englisch und
+> Deutsch verfügbar; der Quelltext ist englisch.
 
-Die Verfahrensdokumentation beschreibt, **wie** ein Archiv entsteht und **warum** man sich darauf
-verlassen kann. Sie fehlt in der Praxis fast immer — und sie entscheidet mit darüber, ob ein
-Gericht einem Archiv folgt. Ein technisch einwandfreies Archiv ohne beschriebenes Verfahren ist
+Die Verfahrensdokumentation beschreibt, wie ein Archiv entsteht und warum man sich darauf
+verlassen kann. Sie fehlt in der Praxis fast immer und beeinflusst, ob ein Gericht einem Archiv
+folgt. Ein technisch einwandfreies Archiv ohne beschriebenes Verfahren ist
 schwerer zu verteidigen als ein einfacheres Archiv mit sauberer Dokumentation.
 
 ---
@@ -42,7 +42,7 @@ und technisch nicht möglich.
 
 **Auslösung:** …
 (zeitgesteuert nach Zeitplan `…`; zusätzlich bei jedem Deployment über Webhook; zusätzlich manuell
-durch berechtigte Personen — Zutreffendes angeben)
+durch berechtigte Personen; Zutreffendes angeben)
 
 **Erfassungswerkzeug:** `browsertrix-crawler`, Version …, in einem Container mit einem
 vollständigen Chromium-Browser. Die Erfassung entspricht damit dem Abruf durch einen gewöhnlichen
@@ -74,11 +74,11 @@ behalten die Version, unter der sie aufgenommen wurden. Eine nachträgliche Änd
 ist technisch ausgeschlossen (Datenbank-Trigger); jede Änderung wird protokolliert.
 
 **Zusatzmodule (Erfassungsmodule):** …
-(Zutreffendes angeben — falls keine Module eingesetzt werden: „Es werden keine Zusatzmodule
+(Zutreffendes angeben. Falls keine Module eingesetzt werden: „Es werden keine Zusatzmodule
 eingesetzt." Dieser Absatz kann dann entfallen.)
 
 Neben der Seitenerfassung können Zusatzmodule Daten archivieren, die auf der Seite selbst nicht
-enthalten sind — beispielsweise Preise, die von einer internen Schnittstelle abgerufen werden. Das
+enthalten sind, beispielsweise Preise, die von einer internen Schnittstelle abgerufen werden. Das
 Ergebnis wird als eigener Stand in derselben Hash-Kette geführt und unterliegt denselben Regeln wie
 eine Seitenerfassung.
 
@@ -115,11 +115,11 @@ Erfassungsbedingungen, Werkzeugversionen) und mit SHA-256 gehasht. Jeder Eintrag
 seines Vorgängers. Eine nachträgliche Änderung eines Eintrags ist damit rechnerisch feststellbar.
 
 Die kanonische Darstellung ist unter
-<https://inverterofcontrol.github.io/priorstate/reference/canonical-form> vollständig dokumentiert.
+<https://inverterofcontrol.github.io/priorstate/de/reference/canonical-form> vollständig dokumentiert.
 
 **Technische Absicherung gegen Änderungen.** Die Tabellen der Kette sind in der Datenbank als
 ausschließlich anfügbar eingerichtet. `UPDATE`, `DELETE` und `TRUNCATE` werden durch Trigger
-abgewiesen — auch gegenüber dem Betreiber und gegenüber administrativen Datenbankkonten. Zulässig
+abgewiesen, auch gegenüber dem Betreiber und gegenüber administrativen Datenbankkonten. Zulässig
 ist ausschließlich das einmalige Nachtragen der Zeitstempel-Zuordnung, die selbst nicht in die
 Hashbildung eingeht.
 
@@ -130,7 +130,7 @@ geprüft werden.
 gebildet und einem Zeitstempeldienst nach RFC 3161 zur Signatur vorgelegt.
 
 Verwendeter Dienst: …
-Qualifizierter Vertrauensdiensteanbieter nach eIDAS: ja / nein — …
+Qualifizierter Vertrauensdiensteanbieter nach eIDAS: ja / nein, …
 
 > Ist hier „nein" einzutragen, ist dies ausdrücklich zu vermerken und zu begründen. Die
 > Zeitstempel sind dann technisch gültig und nachprüfbar, erfüllen aber nicht die Anforderungen an
@@ -147,7 +147,7 @@ Unveränderbarkeit des Speichers (Object Lock / WORM): …
 > hier das tatsächliche Ergebnis ein, nicht die Absicht.
 >
 > Setzt der Speicher keine Sperrfrist durch, ist das zu vermerken. Der Nachweis beruht dann
-> allein auf Hash-Kette und externem Zeitstempel — beide bleiben auch dann gültig, wenn der
+> allein auf Hash-Kette und externem Zeitstempel. Beide bleiben auch dann gültig, wenn der
 > Speicher gelöscht oder verändert wird.
 
 **Löschung einzelner Stände.** Technisch nicht vorgesehen. Die Software bietet keine Funktion zum
@@ -176,7 +176,7 @@ Wiederherstellungsprüfung)
 (namentlich oder nach Rolle)
 
 **Authentifizierung:** …
-(lokale Benutzerkonten / Anmeldung über … — Zutreffendes angeben)
+(lokale Benutzerkonten / Anmeldung über …; Zutreffendes angeben)
 
 Gemeinsam genutzte Zugangsdaten werden nicht verwendet.
 

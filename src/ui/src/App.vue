@@ -51,9 +51,11 @@ onMounted(loadStatus)
   <div class="min-h-screen">
     <header class="app-masthead border-b">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-8">
-        <!-- No mark yet: the name set in the serif of record is the logo. -->
-        <RouterLink to="/" class="font-serif text-[22px] leading-7 font-medium tracking-[-0.01em]">
-          {{ t('app.name') }}
+        <RouterLink to="/" class="inline-flex shrink-0 items-center gap-2.5 font-serif text-[22px] leading-7 font-medium tracking-[-0.01em]">
+          <svg class="h-8 w-8 shrink-0 text-masthead-accent" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <path d="M23 43H7V7h36v16M27 27h30v30H27z" stroke="currentColor" stroke-width="4" stroke-linecap="square" stroke-linejoin="miter" />
+          </svg>
+          <span>{{ t('app.name') }}</span>
         </RouterLink>
 
         <nav v-if="auth.authenticated" :aria-label="t('app.name')" class="order-last -mx-2 flex w-full gap-1 overflow-x-auto py-1 text-sm xl:order-none xl:mx-0 xl:w-auto xl:flex-1">

@@ -1,4 +1,14 @@
+<p>
+  <img src="src/ui/public/logo-mark.svg" alt="PriorState logo" width="80" height="80" />
+</p>
+
 # PriorState
+
+[![CI](https://img.shields.io/github/actions/workflow/status/InverterOfControl/priorstate/ci.yml?branch=main&label=CI)](https://github.com/InverterOfControl/priorstate/actions/workflows/ci.yml)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://inverterofcontrol.github.io/priorstate/)
+[![Licence: AGPL-3.0-only](https://img.shields.io/badge/licence-AGPL--3.0--only-blue)](LICENSE)
+[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](Directory.Build.props)
+[![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white)](src/ui/package.json)
 
 **Tamper-evident archiving of your own websites.**
 

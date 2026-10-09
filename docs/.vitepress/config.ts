@@ -4,6 +4,75 @@ export default defineConfig({
   title: 'PriorState',
   description: 'Tamper-evident website archiving for use as evidence',
   lang: 'en-GB',
+  locales: {
+    root: { label: 'English', lang: 'en-GB' },
+    de: {
+      label: 'Deutsch',
+      lang: 'de-DE',
+      description: 'Webseiten manipulationsnachweisbar archivieren und als Beweismittel prüfen',
+      themeConfig: {
+        nav: [
+          { text: 'Einführung', link: '/de/guide/what-it-does' },
+          { text: 'Betrieb', link: '/de/operations/storage' },
+          { text: 'Referenz', link: '/de/reference/canonical-form' },
+          { text: 'Rechtliches', link: '/de/legal/verfahrensdokumentation' },
+        ],
+        sidebar: [
+          {
+            text: 'Einführung', collapsed: false,
+            items: [
+              { text: 'Was PriorState leistet', link: '/de/guide/what-it-does' },
+              { text: 'Grenzen des Nachweises', link: '/de/guide/limits' },
+              { text: 'Schnellstart', link: '/de/guide/quickstart' },
+              { text: 'Architektur', link: '/de/guide/architecture' },
+              { text: 'Das Beweispaket', link: '/de/guide/evidence-package' },
+            ],
+          },
+          {
+            text: 'Betrieb', collapsed: false,
+            items: [
+              { text: 'Datenbankkonten und Updates', link: '/de/operations/database' },
+              { text: 'Speicher und WORM', link: '/de/operations/storage' },
+              { text: 'Zeitstempeldienst', link: '/de/operations/timestamping' },
+              { text: 'Erfassungsprofile', link: '/de/operations/capture-profiles' },
+              { text: 'Zusätzliche API-Quellen', link: '/de/operations/plugins' },
+              { text: 'Datensicherung und Aufbewahrung', link: '/de/operations/backup' },
+              { text: 'Anforderungen vor dem Start', link: '/de/operations/phase-0-requirements' },
+            ],
+          },
+          {
+            text: 'Referenz', collapsed: false,
+            items: [
+              { text: 'Kanonische Darstellung', link: '/de/reference/canonical-form' },
+              { text: 'Konfiguration', link: '/de/reference/configuration' },
+            ],
+          },
+          {
+            text: 'Rechtliches', collapsed: false,
+            items: [{ text: 'Verfahrensdokumentation', link: '/de/legal/verfahrensdokumentation' }],
+          },
+        ],
+        outline: { level: [2, 3], label: 'Auf dieser Seite' },
+        docFooter: { prev: 'Vorherige Seite', next: 'Nächste Seite' },
+        lastUpdated: { text: 'Zuletzt aktualisiert', formatOptions: { dateStyle: 'medium' } },
+        editLink: {
+          pattern: 'https://github.com/InverterOfControl/priorstate/edit/main/docs/:path',
+          text: 'Diese Seite auf GitHub bearbeiten',
+        },
+        footer: {
+          message: 'AGPL-3.0-only. Keine Rechtsberatung.',
+          copyright: 'Copyright © 2026 Sascha Laabs',
+        },
+        langMenuLabel: 'Sprache ändern',
+        returnToTopLabel: 'Nach oben',
+        sidebarMenuLabel: 'Menü',
+        darkModeSwitchLabel: 'Darstellung',
+        lightModeSwitchTitle: 'Helle Darstellung verwenden',
+        darkModeSwitchTitle: 'Dunkle Darstellung verwenden',
+        skipToContentLabel: 'Zum Inhalt springen',
+      },
+    },
+  },
   cleanUrls: true,
   lastUpdated: true,
 
@@ -73,7 +142,30 @@ export default defineConfig({
       copyright: 'Copyright © 2026 Sascha Laabs',
     },
 
-    search: { provider: 'local' },
+    search: {
+      provider: 'local',
+      options: {
+        locales: {
+          de: {
+            translations: {
+              button: { buttonText: 'Suchen', buttonAriaLabel: 'Dokumentation durchsuchen' },
+              modal: {
+                displayDetails: 'Details anzeigen',
+                resetButtonTitle: 'Suche zurücksetzen',
+                backButtonTitle: 'Suche schließen',
+                noResultsText: 'Keine Ergebnisse für',
+                footer: {
+                  selectText: 'Auswählen', selectKeyAriaLabel: 'Eingabetaste',
+                  navigateText: 'Navigieren', navigateUpKeyAriaLabel: 'Pfeil nach oben',
+                  navigateDownKeyAriaLabel: 'Pfeil nach unten',
+                  closeText: 'Schließen', closeKeyAriaLabel: 'Escape',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     outline: { level: [2, 3], label: 'On this page' },
 
     editLink: {

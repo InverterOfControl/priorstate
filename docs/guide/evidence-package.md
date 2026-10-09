@@ -49,8 +49,8 @@ it, they are expected to read it. That is also why the format hashed in step 2 i
 
 ## What the protocol says
 
-The protocol PDF is in German — it is the document handed to a German lawyer or court, and it is
-one of two deliberate exceptions to this project being in English. For browser archives it records
+The protocol PDF is in German because it is the document handed to a German lawyer or court.
+The documentation is available in English and German. For browser archives the protocol records
 the first seed URL and crawl start, rather than each page's URL and capture time. It also records
 the capture conditions, every hash in the chain of reasoning, the timestamp details,
 and the storage immutability status **as observed**.
