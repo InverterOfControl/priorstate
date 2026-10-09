@@ -43,7 +43,7 @@ services:
     networks: [priorstate]
 
   garage:
-    image: dxflrs/garage:v2.1.0
+    image: dxflrs/garage:v2.4.1
     restart: unless-stopped
     volumes:
       - ./garage.toml:/etc/garage.toml:ro
@@ -62,7 +62,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.garage-init
-    image: priorstate-garage-init:v2.1.0
+    image: priorstate-garage-init:v2.4.1
     depends_on: [garage]
     restart: on-failure
     environment:
