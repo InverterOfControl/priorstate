@@ -2,19 +2,8 @@
 layout: home
 
 hero:
-  name: PriorState
-  text: Tamper-evident website archiving
+  text: PriorState documentation
   tagline: For use as evidence, not as documentation. Hash-chained, externally timestamped, and re-verifiable by someone who does not trust you.
-  actions:
-    - theme: brand
-      text: Quickstart
-      link: /guide/quickstart
-    - theme: alt
-      text: What it does not claim
-      link: /guide/limits
-    - theme: alt
-      text: GitHub
-      link: https://github.com/InverterOfControl/priorstate
 
 features:
   - title: Capture, not screenshots

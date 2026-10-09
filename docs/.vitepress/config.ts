@@ -22,12 +22,12 @@ export default defineConfig({
       { text: 'Operations', link: '/operations/storage' },
       { text: 'Reference', link: '/reference/canonical-form' },
       { text: 'Rechtliches (DE)', link: '/legal/verfahrensdokumentation' },
-      { text: 'GitHub', link: 'https://github.com/InverterOfControl/priorstate' },
     ],
 
     sidebar: [
       {
         text: 'Guide',
+        collapsed: false,
         items: [
           { text: 'What it does', link: '/guide/what-it-does' },
           { text: 'What it does not claim', link: '/guide/limits' },
@@ -38,6 +38,7 @@ export default defineConfig({
       },
       {
         text: 'Operations',
+        collapsed: false,
         items: [
           { text: 'Database accounts and upgrades', link: '/operations/database' },
           { text: 'Storage and WORM', link: '/operations/storage' },
@@ -50,6 +51,7 @@ export default defineConfig({
       },
       {
         text: 'Reference',
+        collapsed: false,
         items: [
           { text: 'Canonical form', link: '/reference/canonical-form' },
           { text: 'Configuration', link: '/reference/configuration' },
@@ -57,6 +59,7 @@ export default defineConfig({
       },
       {
         text: 'Rechtliches (Deutsch)',
+        collapsed: false,
         items: [
           { text: 'Verfahrensdokumentation', link: '/legal/verfahrensdokumentation' },
         ],
@@ -71,6 +74,7 @@ export default defineConfig({
     },
 
     search: { provider: 'local' },
+    outline: { level: [2, 3], label: 'On this page' },
 
     editLink: {
       pattern: 'https://github.com/InverterOfControl/priorstate/edit/main/docs/:path',
