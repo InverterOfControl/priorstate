@@ -14,6 +14,7 @@
   },
   "ledger": {
     "title": "Ledger",
+    "retry": "Retry loading the ledger",
     "chainLength": "Chain entries",
     "head": "Head hash",
     "lastCapture": "Last capture",
@@ -43,7 +44,8 @@
     "qualified": "Qualified provider",
     "unqualified": "Not a qualified eIDAS provider",
     "unqualifiedWarning": "Timestamps are coming from a demonstration service. They are technically valid and verifiable, but will not carry a legal dispute. Configure a qualified provider before capturing anything you may need to rely on.",
-    "pending": "Not yet timestamped"
+    "pending": "Not yet timestamped",
+    "anchored": "Timestamped"
   },
   "snapshot": {
     "title": "Snapshot",
@@ -205,7 +207,9 @@
     "error": "Something went wrong",
     "yes": "Yes",
     "no": "No",
-    "back": "Back"
+    "back": "Back",
+    "copyHash": "Copy full hash",
+    "copied": "Copied"
   },
   "auth": {
     "signInTitle": "Sign in",

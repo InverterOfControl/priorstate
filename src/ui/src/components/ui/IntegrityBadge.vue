@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { WormSupport } from '@/lib/api'
+import Glyph, { type GlyphName } from './Glyph.vue'
 
 /**
  * Reports storage immutability as it was observed, never as it was hoped.
@@ -14,14 +15,14 @@ import type { WormSupport } from '@/lib/api'
 const props = defineProps<{ worm: WormSupport }>()
 const { t } = useI18n()
 
-const tone = computed(() => {
+const look = computed((): { glyph: GlyphName; tone: string } => {
   switch (props.worm) {
     case 'Enforced':
-      return 'border-verified/40 text-verified'
+      return { glyph: 'shield', tone: 'bg-ledger-soft text-ledger' }
     case 'ApiPresentUnverified':
-      return 'border-caution/40 text-caution'
+      return { glyph: 'clock', tone: 'bg-brass-soft text-brass' }
     default:
-      return 'border-rule text-ink-muted'
+      return { glyph: 'dash', tone: 'bg-paper-sunken text-ink-muted inset-ring inset-ring-rule' }
   }
 })
 
@@ -30,10 +31,11 @@ const label = computed(() => t(`storage.${props.worm}`))
 
 <template>
   <span
-    class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium"
-    :class="tone"
+    class="inline-flex h-[22px] items-center gap-1 rounded-xs pr-2 pl-1.5 whitespace-nowrap type-label [&_svg]:size-3.5"
+    :class="look.tone"
     :title="label"
   >
-    {{ label }}
+    <Glyph :name="look.glyph" />
+    <span>{{ label }}</span>
   </span>
 </template>

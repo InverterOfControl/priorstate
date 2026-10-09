@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, type ProjectSummary } from '@/lib/api'
 import Button from '@/components/ui/Button.vue'
+import Notice from '@/components/ui/Notice.vue'
 
 interface ProfileOption {
   id: string
@@ -80,7 +81,7 @@ onMounted(async () => {
 <template>
   <form class="space-y-5" @submit.prevent="submit">
     <div>
-      <label for="p-name" class="mb-1 block text-xs font-medium text-ink-muted">
+      <label for="p-name" class="field-label">
         {{ t('projects.form.name') }}
       </label>
       <input
@@ -88,12 +89,12 @@ onMounted(async () => {
         v-model="name"
         required
         maxlength="200"
-        class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 text-sm"
+        class="field-input"
       />
     </div>
 
     <div>
-      <label for="p-seeds" class="mb-1 block text-xs font-medium text-ink-muted">
+      <label for="p-seeds" class="field-label">
         {{ t('projects.form.seedUrls') }}
       </label>
       <textarea
@@ -101,58 +102,58 @@ onMounted(async () => {
         v-model="seedUrls"
         rows="3"
         placeholder="https://example.com/&#10;https://example.com/prices"
-        class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 font-mono text-xs"
+        class="field-input font-mono text-mono"
       />
-      <p class="mt-1 text-xs text-ink-muted">{{ t('projects.form.seedUrlsHint') }}</p>
+      <p class="field-hint">{{ t('projects.form.seedUrlsHint') }}</p>
     </div>
 
-    <details class="rounded-md border border-rule px-3 py-2">
-      <summary class="cursor-pointer text-xs font-medium text-ink-muted">
+    <details class="rounded-sm border border-rule px-3 py-2">
+      <summary class="cursor-pointer type-label text-ink-muted">
         {{ t('projects.form.scope') }}
       </summary>
       <div class="mt-3 space-y-3">
         <div>
-          <label for="p-include" class="mb-1 block text-xs font-medium text-ink-muted">
+          <label for="p-include" class="field-label">
             {{ t('projects.form.include') }}
           </label>
           <textarea
             id="p-include"
             v-model="scopeIncludes"
             rows="2"
-            class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 font-mono text-xs"
+            class="field-input font-mono text-mono"
           />
         </div>
         <div>
-          <label for="p-exclude" class="mb-1 block text-xs font-medium text-ink-muted">
+          <label for="p-exclude" class="field-label">
             {{ t('projects.form.exclude') }}
           </label>
           <textarea
             id="p-exclude"
             v-model="scopeExcludes"
             rows="2"
-            class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 font-mono text-xs"
+            class="field-input font-mono text-mono"
           />
         </div>
-        <p class="text-xs text-ink-muted">{{ t('projects.form.scopeHint') }}</p>
+        <p class="field-hint">{{ t('projects.form.scopeHint') }}</p>
       </div>
     </details>
 
     <div class="grid gap-4 sm:grid-cols-2">
       <div>
-        <label for="p-schedule" class="mb-1 block text-xs font-medium text-ink-muted">
+        <label for="p-schedule" class="field-label">
           {{ t('projects.form.schedule') }}
         </label>
         <input
           id="p-schedule"
           v-model="schedule"
           placeholder="0 3 * * *"
-          class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 font-mono text-xs"
+          class="field-input font-mono text-mono"
         />
-        <p class="mt-1 text-xs text-ink-muted">{{ t('projects.form.scheduleHint') }}</p>
+        <p class="field-hint">{{ t('projects.form.scheduleHint') }}</p>
       </div>
 
       <div>
-        <label for="p-retention" class="mb-1 block text-xs font-medium text-ink-muted">
+        <label for="p-retention" class="field-label">
           {{ t('projects.form.retention') }}
         </label>
         <input
@@ -162,36 +163,34 @@ onMounted(async () => {
           min="1"
           max="30"
           required
-          class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 text-sm"
+          class="field-input"
         />
         <!--
           Stated here rather than in a help page, because this is the moment the decision is made
           and the API will refuse to reverse it later.
         -->
-        <p class="mt-1 text-xs text-caution">{{ t('projects.form.retentionWarning') }}</p>
+        <p class="field-hint text-brass">{{ t('projects.form.retentionWarning') }}</p>
       </div>
     </div>
 
     <div>
-      <label for="p-profile" class="mb-1 block text-xs font-medium text-ink-muted">
+      <label for="p-profile" class="field-label">
         {{ t('projects.form.profile') }}
       </label>
       <select
         id="p-profile"
         v-model="captureProfileVersionId"
-        class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 text-sm"
+        class="field-input"
       >
         <option value="">{{ t('projects.form.profileDefault') }}</option>
         <option v-for="profile in profiles" :key="profile.id" :value="profile.id">
           {{ profile.name }} v{{ profile.version }}{{ profile.supersededAt ? ' — superseded' : '' }}
         </option>
       </select>
-      <p class="mt-1 text-xs text-ink-muted">{{ t('projects.form.profileHint') }}</p>
+      <p class="field-hint">{{ t('projects.form.profileHint') }}</p>
     </div>
 
-    <p v-if="error" class="rounded-md border border-broken/40 bg-broken/10 px-3 py-2 text-sm text-broken">
-      {{ error }}
-    </p>
+    <Notice v-if="error" tone="alert">{{ error }}</Notice>
 
     <div class="flex gap-2">
       <Button type="submit" variant="primary" :disabled="busy">

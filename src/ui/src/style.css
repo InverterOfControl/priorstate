@@ -1,61 +1,199 @@
 @import "tailwindcss";
 
+/* Self-hosted rather than loaded from Google Fonts: an instance that archives evidence should not
+   announce each of its operators' page views to a third party. */
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/newsreader";
+
 /*
-  A deliberately quiet, document-like palette. This is a tool for producing evidence, and the
-  interface should read as a record rather than as a dashboard — muted paper tones, one restrained
-  accent, and colour reserved for the two things that genuinely need attention: a broken chain and
-  an unqualified timestamp authority.
+  The interface reads as a record rather than as a dashboard: archival paper surfaces, hairline
+  rules instead of shadows, and three colours with fixed jobs.
+
+    ledger  the brand, the only action colour, and the Sealed / verified state
+    brass   the seal — timestamps of record and anything still awaiting one; never an action
+    alert   integrity failures and destructive actions, nothing else
+
+  Each has a -soft tint that only ever sits behind its own hue's text, and text on a filled
+  ledger or alert surface uses on-ledger / on-alert. Status is never carried by colour alone:
+  badges carry a glyph and a word.
 */
 @theme {
-  --color-paper: oklch(0.985 0.004 85);
-  --color-paper-raised: oklch(1 0 0);
-  --color-ink: oklch(0.22 0.012 60);
-  --color-ink-muted: oklch(0.52 0.012 60);
-  --color-rule: oklch(0.91 0.006 75);
-  --color-accent: oklch(0.48 0.09 250);
-  --color-verified: oklch(0.52 0.11 150);
-  --color-caution: oklch(0.58 0.13 65);
-  --color-broken: oklch(0.53 0.19 25);
+  --color-paper: #f0e7d7;
+  --color-paper-raised: #fffaf0;
+  --color-paper-sunken: #e5dac7;
+  --color-rule: #d7cbb8;
+  --color-rule-strong: #8b7c67;
+  --color-ink: #222c3b;
+  --color-ink-muted: #625c52;
+  --color-ledger: #14685d;
+  --color-ledger-soft: #d6e7dd;
+  --color-on-ledger: #fffaf0;
+  --color-brass: #85501c;
+  --color-brass-soft: #f3dfbd;
+  --color-alert: #a33332;
+  --color-alert-soft: #f6ded5;
+  --color-on-alert: #fffaf0;
 
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  /* The masthead is an ink surface in both themes, like the cover of a bound register. */
+  --color-masthead: #202c3b;
+  --color-masthead-ink: #f4ead7;
+  --color-masthead-muted: #c0c7cb;
+  --color-masthead-rule: #526578;
+  --color-masthead-active: #324f52;
+  --color-masthead-accent: #b0e5d1;
+
+  --font-serif: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+
+  /* Serif is the voice of record — page titles only, never interface chrome. */
+  --text-display: 44px;
+  --text-display--line-height: 48px;
+  --text-display--font-weight: 500;
+  --text-display--letter-spacing: -0.015em;
+  --text-title: 28px;
+  --text-title--line-height: 34px;
+  --text-title--font-weight: 500;
+  --text-title--letter-spacing: -0.01em;
+
+  --text-heading: 17px;
+  --text-heading--line-height: 24px;
+  --text-heading--font-weight: 600;
+  --text-heading--letter-spacing: -0.005em;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 20px;
+  --text-label: 11px;
+  --text-label--line-height: 16px;
+  --text-label--font-weight: 600;
+  --text-label--letter-spacing: 0.08em;
+
+  --text-mono: 13px;
+  --text-mono--line-height: 20px;
+  --text-mono-sm: 12px;
+  --text-mono-sm--line-height: 16px;
+  --text-mono-sm--font-weight: 500;
+
+  /* Tight, square-shouldered corners — documents, not bubbles. */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --shadow-sm: 0 1px 2px #16181b0f;
+  --shadow-lg: 0 2px 6px #16181b0f, 0 12px 32px -4px #16181b24;
+  --shadow-focus-ring: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-ledger);
+
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
 }
 
+/* Utilities read the variables at runtime, so the dark theme only has to redefine them. */
 @media (prefers-color-scheme: dark) {
-  @theme {
-    --color-paper: oklch(0.19 0.008 70);
-    --color-paper-raised: oklch(0.23 0.009 70);
-    --color-ink: oklch(0.93 0.006 80);
-    --color-ink-muted: oklch(0.68 0.01 75);
-    --color-rule: oklch(0.32 0.008 70);
-    --color-accent: oklch(0.72 0.11 250);
-    --color-verified: oklch(0.74 0.12 150);
-    --color-caution: oklch(0.78 0.13 70);
-    --color-broken: oklch(0.7 0.17 25);
+  :root {
+    --color-paper: #18212d;
+    --color-paper-raised: #222e3c;
+    --color-paper-sunken: #121b26;
+    --color-rule: #3b4a59;
+    --color-rule-strong: #81909e;
+    --color-ink: #f2e9d9;
+    --color-ink-muted: #b9bebf;
+    --color-ledger: #8dd9c1;
+    --color-ledger-soft: #203f3c;
+    --color-on-ledger: #102e28;
+    --color-brass: #efbd83;
+    --color-brass-soft: #473629;
+    --color-alert: #ffa69c;
+    --color-alert-soft: #4a2b30;
+    --color-on-alert: #35151b;
+    --color-masthead: #121b26;
+
+    --shadow-sm: 0 1px 2px #00000099;
+    --shadow-lg: 0 12px 32px -4px #000000cc;
   }
 }
 
-html {
-  color-scheme: light dark;
-}
-
-body {
-  background-color: var(--color-paper);
-  color: var(--color-ink);
+/* Field labels and badge text: small, spaced capitals. */
+@utility type-label {
   font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  font-weight: var(--text-label--font-weight);
+  letter-spacing: var(--text-label--letter-spacing);
+  text-transform: uppercase;
 }
 
-/* Hashes appear throughout and are compared by eye against evidence packages. They get a fixed
-   monospace treatment everywhere so that comparison is actually possible. */
+@layer base {
+  html {
+    color-scheme: light dark;
+    scrollbar-color: var(--color-rule-strong) var(--color-paper);
+  }
+
+  ::selection {
+    background-color: var(--color-ledger-soft);
+    color: var(--color-ink);
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    caret-color: var(--color-ledger);
+  }
+
+  a:not([class]) {
+    color: var(--color-ledger);
+    text-underline-offset: 3px;
+  }
+
+  /* Keyboard focus is always the same ring: a paper gap, then solid ledger. */
+  :focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: var(--shadow-focus-ring);
+  }
+}
+
+@layer components {
+  .app-masthead {
+    background-color: var(--color-masthead);
+    color: var(--color-masthead-ink);
+    border-color: var(--color-masthead-rule);
+    scrollbar-color: var(--color-masthead-rule) var(--color-masthead);
+  }
+
+  .app-masthead :focus-visible {
+    outline: 2px solid var(--color-masthead-accent);
+    box-shadow: none;
+  }
+
+  /* One treatment for every text control, so a form built by hand still matches TextField. */
+  .field-label {
+    @apply mb-1 block type-label text-ink-muted;
+  }
+
+  .field-input {
+    @apply w-full rounded-sm border border-rule-strong bg-paper-raised px-3 py-2 text-body text-ink placeholder:text-ink-muted;
+  }
+
+  .field-input[aria-invalid='true'] {
+    @apply border-alert;
+  }
+
+  .field-hint {
+    @apply mt-1 text-body-sm text-ink-muted;
+  }
+}
+
+/* Hashes are compared by eye against evidence packages, so they get a fixed monospace treatment
+   everywhere. */
 .hash {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: -0.01em;
+  font-size: var(--text-mono);
+  line-height: var(--text-mono--line-height);
   word-break: break-all;
-}
-
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
 }

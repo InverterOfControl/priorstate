@@ -49,27 +49,30 @@ onMounted(loadStatus)
 
 <template>
   <div class="min-h-screen">
-    <header class="border-b border-rule bg-paper-raised">
-      <div class="mx-auto flex max-w-6xl items-baseline gap-6 px-6 py-3">
-        <RouterLink to="/" class="font-semibold tracking-tight">{{ t('app.name') }}</RouterLink>
+    <header class="app-masthead border-b">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-8">
+        <!-- No mark yet: the name set in the serif of record is the logo. -->
+        <RouterLink to="/" class="font-serif text-[22px] leading-7 font-medium tracking-[-0.01em]">
+          {{ t('app.name') }}
+        </RouterLink>
 
-        <nav v-if="auth.authenticated" class="flex flex-1 gap-1 text-sm">
+        <nav v-if="auth.authenticated" :aria-label="t('app.name')" class="order-last -mx-2 flex w-full gap-1 overflow-x-auto py-1 text-sm xl:order-none xl:mx-0 xl:w-auto xl:flex-1">
           <RouterLink
             v-for="item in nav"
             :key="item.name"
             :to="item.to"
-            class="rounded px-2.5 py-1 text-ink-muted transition-colors hover:bg-paper hover:text-ink"
-            active-class="bg-paper text-ink"
+            class="inline-flex min-h-11 items-center rounded-sm px-2.5 py-2 whitespace-nowrap text-masthead-muted transition-colors hover:bg-masthead-active hover:text-masthead-ink"
+            active-class="bg-masthead-active !text-masthead-accent font-medium"
           >
             {{ t(`nav.${item.name}`) }}
           </RouterLink>
         </nav>
         <span v-else class="flex-1" />
 
-        <div class="flex items-center gap-3 text-xs">
+        <div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 text-body-sm">
           <template v-if="auth.authenticated">
-            <span class="text-ink-muted">{{ auth.userName }}</span>
-            <button type="button" class="text-ink-muted transition-colors hover:text-ink" @click="signOut">
+            <span class="max-w-48 truncate text-masthead-muted" :title="auth.userName ?? undefined">{{ auth.userName }}</span>
+            <button type="button" class="min-h-11 text-masthead-muted transition-colors hover:text-masthead-ink" @click="signOut">
               {{ t('auth.signOut') }}
             </button>
           </template>
@@ -79,8 +82,9 @@ onMounted(loadStatus)
               v-for="value in availableLocales"
               :key="value"
               type="button"
-              class="rounded px-1.5 py-0.5 uppercase transition-colors"
-              :class="locale === value ? 'text-ink' : 'text-ink-muted hover:text-ink'"
+              :aria-pressed="locale === value"
+              class="min-h-11 min-w-11 rounded-xs px-2 py-2 type-label transition-colors"
+              :class="locale === value ? 'bg-masthead-active text-masthead-accent' : 'text-masthead-muted hover:bg-masthead-active hover:text-masthead-ink'"
               @click="switchLocale(value)"
             >
               {{ value }}
@@ -97,17 +101,22 @@ onMounted(loadStatus)
     -->
     <div
       v-if="status && status.timestampAnchors > 0 && !status.lastAnchorQualified"
-      class="border-b border-caution/30 bg-caution/10 px-6 py-2 text-center text-xs text-caution"
+      role="alert"
+      class="border-b border-rule bg-brass-soft text-body-sm text-brass"
     >
-      {{ t('timestamp.unqualifiedWarning') }}
+      <div class="mx-auto max-w-6xl px-4 py-3 sm:px-8">
+        {{ t('timestamp.unqualifiedWarning') }}
+      </div>
     </div>
 
-    <main class="mx-auto max-w-6xl px-6 py-8">
+    <main class="mx-auto max-w-6xl px-4 py-8 sm:px-8">
       <RouterView />
     </main>
 
-    <footer class="mx-auto max-w-6xl px-6 pb-10 text-xs text-ink-muted">
-      {{ t('app.name') }} — {{ t('app.tagline') }} · AGPL-3.0-only
+    <footer class="mx-auto max-w-6xl px-4 pb-10 text-body-sm text-ink-muted sm:px-8">
+      <div class="border-t border-rule pt-5">
+        {{ t('app.name') }} — {{ t('app.tagline') }} · AGPL-3.0-only
+      </div>
     </footer>
   </div>
 </template>

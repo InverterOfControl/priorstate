@@ -20,15 +20,15 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-6">
-    <h1 class="text-lg font-semibold tracking-tight">{{ t('audit.title') }}</h1>
-    <p class="text-sm text-ink-muted">{{ t('audit.note') }}</p>
+    <h1 class="font-serif text-title">{{ t('audit.title') }}</h1>
+    <p class="text-body-sm text-ink-muted">{{ t('audit.note') }}</p>
 
-    <p v-if="loading" class="text-sm text-ink-muted">{{ t('common.loading') }}</p>
+    <p v-if="loading" class="text-body-sm text-ink-muted">{{ t('common.loading') }}</p>
 
     <Card v-else>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="text-left text-xs text-ink-muted">
+        <table class="w-full text-body-sm">
+          <thead class="text-left type-label text-ink-muted">
             <tr class="border-b border-rule">
               <th class="pb-2 font-medium">{{ t('audit.when') }}</th>
               <th class="pb-2 font-medium">{{ t('audit.who') }}</th>
@@ -39,7 +39,7 @@ onMounted(async () => {
           </thead>
           <tbody class="divide-y divide-rule">
             <tr v-for="entry in entries" :key="entry.id">
-              <td class="py-2 whitespace-nowrap tabular-nums text-ink-muted">
+              <td class="py-2 pr-4 font-mono text-mono-sm whitespace-nowrap text-ink-muted tabular-nums">
                 {{ formatUtc(entry.occurredAtUtc) }}
               </td>
               <td class="py-2">{{ entry.userName ?? 'system' }}</td>

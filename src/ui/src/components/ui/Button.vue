@@ -1,7 +1,9 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary'
+    /** primary is the one action a view is for — at most once per view. */
+    variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+    size?: 'md' | 'sm'
     disabled?: boolean
     // Defaults to "button" so a button inside a form does not submit it by accident; the sign-in
     // form passes "submit" explicitly.
@@ -9,6 +11,7 @@ withDefaults(
   }>(),
   {
     variant: 'secondary',
+    size: 'md',
     disabled: false,
     type: 'button',
   },
@@ -19,12 +22,16 @@ withDefaults(
   <button
     :type="type"
     :disabled="disabled"
-    class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-    :class="
-      variant === 'primary'
-        ? 'bg-accent text-paper-raised hover:opacity-90'
-        : 'border border-rule bg-paper-raised hover:bg-paper'
-    "
+    class="inline-flex cursor-pointer items-center gap-2 rounded-sm border font-medium transition-[background-color,border-color,filter] disabled:cursor-not-allowed disabled:opacity-50 disabled:filter-none"
+    :class="[
+      size === 'sm' ? 'h-7 px-3 text-body-sm' : 'h-9 px-4 text-sm',
+      {
+        'border-ledger bg-ledger text-on-ledger hover:brightness-108': variant === 'primary',
+        'border-rule-strong bg-paper-raised text-ink hover:bg-paper-sunken': variant === 'secondary',
+        'border-transparent bg-transparent text-ink hover:bg-paper-sunken': variant === 'ghost',
+        'border-alert bg-alert text-on-alert hover:brightness-108': variant === 'danger',
+      },
+    ]"
   >
     <slot />
   </button>

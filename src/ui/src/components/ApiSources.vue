@@ -5,6 +5,7 @@ import { api, type PluginBindingSummary } from '@/lib/api'
 import { readSourceConfiguration, sourceConfigurationJson, type HttpSourceConfiguration } from '@/lib/sourceConfiguration'
 import { formatUtc } from '@/lib/format'
 import Button from '@/components/ui/Button.vue'
+import Notice from '@/components/ui/Notice.vue'
 
 const props = defineProps<{ projectId: string }>()
 const { t } = useI18n()
@@ -117,85 +118,85 @@ onUnmounted(() => { disposed = true; if (timer) clearInterval(timer) })
 <template>
   <section class="space-y-4 border-t border-rule pt-4">
     <div class="flex items-center justify-between gap-4">
-      <h2 class="text-sm font-semibold">{{ t('sources.title') }}</h2>
+      <h2 class="text-body font-semibold">{{ t('sources.title') }}</h2>
       <Button v-if="!editing" @click="begin()">{{ t('sources.add') }}</Button>
     </div>
-    <p class="text-sm text-ink-muted">{{ t('sources.intro') }}</p>
-    <p v-if="error" role="alert" class="text-sm text-broken">{{ error }}</p>
-    <p v-if="message" role="status" class="text-sm text-verified">{{ message }}</p>
-    <form v-if="editing" class="space-y-3 rounded border border-rule p-4" @submit.prevent="save">
-      <p class="text-xs text-ink-muted">{{ t('plugins.newBindingHint') }}</p>
-      <label class="block text-sm">{{ t('plugins.name') }}
-        <input v-model="name" :readonly="existing" required maxlength="120" class="mt-1 w-full rounded border border-rule bg-paper p-2" />
+    <p class="text-body-sm text-ink-muted">{{ t('sources.intro') }}</p>
+    <Notice v-if="error" tone="alert" role="alert">{{ error }}</Notice>
+    <p v-if="message" role="status" class="text-body-sm text-ledger">{{ message }}</p>
+    <form v-if="editing" class="space-y-3 rounded-sm border border-rule p-4" @submit.prevent="save">
+      <p class="text-body-sm text-ink-muted">{{ t('plugins.newBindingHint') }}</p>
+      <label class="block text-body-sm">{{ t('plugins.name') }}
+        <input v-model="name" :readonly="existing" required maxlength="120" class="field-input mt-1" />
       </label>
-      <label class="block text-sm">{{ t('sources.url') }}
-        <input v-model="config.url" type="url" required placeholder="https://api.example.com/prices" class="mt-1 w-full rounded border border-rule bg-paper p-2" />
+      <label class="block text-body-sm">{{ t('sources.url') }}
+        <input v-model="config.url" type="url" required placeholder="https://api.example.com/prices" class="field-input mt-1" />
       </label>
-      <label class="block text-sm">{{ t('sources.method') }}
-        <select v-model="config.method" class="ml-3 rounded border border-rule bg-paper p-2"><option>GET</option><option>POST</option></select>
+      <label class="block text-body-sm">{{ t('sources.method') }}
+        <select v-model="config.method" class="field-input ml-3 w-auto"><option>GET</option><option>POST</option></select>
       </label>
-      <p v-if="config.method === 'POST'" class="text-sm text-ink-muted">{{ t('sources.postNotice') }}</p>
-      <label v-if="config.method === 'POST'" class="block text-sm">{{ t('sources.body') }}
-        <textarea v-model="config.body" rows="3" class="hash mt-1 w-full rounded border border-rule bg-paper p-2"></textarea>
+      <p v-if="config.method === 'POST'" class="text-body-sm text-ink-muted">{{ t('sources.postNotice') }}</p>
+      <label v-if="config.method === 'POST'" class="block text-body-sm">{{ t('sources.body') }}
+        <textarea v-model="config.body" rows="3" class="field-input hash mt-1"></textarea>
       </label>
-      <label class="block text-sm">{{ t('sources.authentication') }}
-        <select v-model="auth" class="ml-3 rounded border border-rule bg-paper p-2">
+      <label class="block text-body-sm">{{ t('sources.authentication') }}
+        <select v-model="auth" class="field-input ml-3 w-auto">
           <option value="none">{{ t('sources.noAuthentication') }}</option>
           <option value="bearer">Bearer token</option>
           <option value="header">{{ t('sources.customHeader') }}</option>
         </select>
       </label>
       <template v-if="auth !== 'none'">
-        <label v-if="auth === 'header'" class="block text-sm">{{ t('sources.headerName') }}
-          <input v-model="config.authHeaderName" required placeholder="X-API-Key" class="mt-1 w-full rounded border border-rule bg-paper p-2" />
+        <label v-if="auth === 'header'" class="block text-body-sm">{{ t('sources.headerName') }}
+          <input v-model="config.authHeaderName" required placeholder="X-API-Key" class="field-input mt-1" />
         </label>
-        <label v-if="auth === 'header'" class="block text-sm">{{ t('sources.prefix') }}
-          <input v-model="config.authValuePrefix" class="mt-1 w-full rounded border border-rule bg-paper p-2" />
+        <label v-if="auth === 'header'" class="block text-body-sm">{{ t('sources.prefix') }}
+          <input v-model="config.authValuePrefix" class="field-input mt-1" />
         </label>
-        <label class="block text-sm">{{ t('sources.secretName') }}
-          <input v-model="secretRef" required pattern="PS_SECRET_[A-Z0-9_]+" placeholder="PS_SECRET_PRICES_TOKEN" class="hash mt-1 w-full rounded border border-rule bg-paper p-2" />
+        <label class="block text-body-sm">{{ t('sources.secretName') }}
+          <input v-model="secretRef" required pattern="PS_SECRET_[A-Z0-9_]+" placeholder="PS_SECRET_PRICES_TOKEN" class="field-input hash mt-1" />
         </label>
-        <p class="text-xs text-ink-muted">{{ t('sources.secretHelp') }}</p>
+        <p class="text-body-sm text-ink-muted">{{ t('sources.secretHelp') }}</p>
       </template>
       <details>
-        <summary class="cursor-pointer text-sm">{{ t('sources.advanced') }}</summary>
-        <label class="mt-2 block text-sm">Accept <input v-model="config.accept" placeholder="application/json" class="w-full rounded border border-rule bg-paper p-2" /></label>
-        <label class="mt-2 block text-sm">Content-Type <input v-model="config.contentType" placeholder="application/json" class="w-full rounded border border-rule bg-paper p-2" /></label>
-        <label class="mt-2 block text-sm">{{ t('sources.headers') }}
-          <textarea v-model="headersJson" rows="3" class="hash w-full rounded border border-rule bg-paper p-2"></textarea>
+        <summary class="cursor-pointer text-body-sm">{{ t('sources.advanced') }}</summary>
+        <label class="mt-2 block text-body-sm">Accept <input v-model="config.accept" placeholder="application/json" class="field-input" /></label>
+        <label class="mt-2 block text-body-sm">Content-Type <input v-model="config.contentType" placeholder="application/json" class="field-input" /></label>
+        <label class="mt-2 block text-body-sm">{{ t('sources.headers') }}
+          <textarea v-model="headersJson" rows="3" class="field-input hash"></textarea>
         </label>
       </details>
-      <p class="text-xs text-ink-muted">{{ t('sources.noSecrets') }}</p>
-      <label class="block text-sm">{{ t('plugins.rationale') }}
-        <textarea v-model="rationale" required maxlength="2000" rows="2" class="mt-1 w-full rounded border border-rule bg-paper p-2"></textarea>
+      <p class="text-body-sm text-ink-muted">{{ t('sources.noSecrets') }}</p>
+      <label class="block text-body-sm">{{ t('plugins.rationale') }}
+        <textarea v-model="rationale" required maxlength="2000" rows="2" class="field-input mt-1"></textarea>
       </label>
-      <label class="flex gap-2 text-sm"><input v-model="required" type="checkbox" />{{ t('sources.required') }}</label>
+      <label class="flex gap-2 text-body-sm"><input v-model="required" type="checkbox" />{{ t('sources.required') }}</label>
       <div class="flex gap-2"><Button type="submit" variant="primary" :disabled="busy">{{ t('sources.save') }}</Button>
         <Button :disabled="busy" @click="editing = false">{{ t('plugins.cancel') }}</Button></div>
     </form>
-    <p v-if="!live.length" class="text-sm text-ink-muted">{{ t('sources.empty') }}</p>
-    <article v-for="binding in live" :key="binding.id" class="space-y-2 rounded border border-rule p-3">
-      <h3 class="text-sm font-medium">{{ binding.designation }}</h3>
-      <p class="break-all text-sm text-ink-muted">{{ summary(binding) }}</p>
-      <p v-if="binding.secretRef" class="text-xs text-ink-muted">{{ t('sources.secretName') }}: {{ binding.secretRef }}</p>
-      <p v-if="binding.required" class="text-xs text-ink-muted">{{ t('sources.requiredShort') }}</p>
-      <details><summary class="cursor-pointer text-xs text-ink-muted">{{ t('sources.advanced') }}</summary>
-        <pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs text-ink-muted">{{ binding.configurationJson }}</pre>
+    <p v-if="!live.length" class="text-body-sm text-ink-muted">{{ t('sources.empty') }}</p>
+    <article v-for="binding in live" :key="binding.id" class="space-y-2 rounded-sm border border-rule p-3">
+      <h3 class="text-body font-medium">{{ binding.designation }}</h3>
+      <p class="break-all text-body-sm text-ink-muted">{{ summary(binding) }}</p>
+      <p v-if="binding.secretRef" class="text-body-sm text-ink-muted">{{ t('sources.secretName') }}: {{ binding.secretRef }}</p>
+      <p v-if="binding.required" class="text-body-sm text-ink-muted">{{ t('sources.requiredShort') }}</p>
+      <details><summary class="cursor-pointer text-body-sm text-ink-muted">{{ t('sources.advanced') }}</summary>
+        <pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-body-sm text-ink-muted">{{ binding.configurationJson }}</pre>
       </details>
       <div class="flex flex-wrap gap-2">
         <Button :disabled="busy || tests[binding.id]?.state === 'Queued' || tests[binding.id]?.state === 'Running'" @click="test(binding)">{{ t('sources.test') }}</Button>
         <Button v-if="binding.pluginId === 'http-json'" :disabled="busy" @click="begin(binding)">{{ t('sources.edit') }}</Button>
         <Button :disabled="busy" @click="retire(binding)">{{ t('plugins.retire') }}</Button>
       </div>
-      <p class="text-xs text-ink-muted">{{ t('sources.testHint') }}</p>
-      <div v-if="tests[binding.id]" role="status" class="text-sm">
+      <p class="text-body-sm text-ink-muted">{{ t('sources.testHint') }}</p>
+      <div v-if="tests[binding.id]" role="status" class="text-body-sm">
         {{ t(`sources.state.${tests[binding.id]!.state}`) }}
         <span v-if="tests[binding.id]!.sizeBytes !== null"> · {{ tests[binding.id]!.sizeBytes }} bytes · {{ tests[binding.id]!.mediaType }}</span>
-        <p v-if="tests[binding.id]!.error" class="text-broken">{{ tests[binding.id]!.error }}</p>
+        <p v-if="tests[binding.id]!.error" class="text-alert">{{ tests[binding.id]!.error }}</p>
       </div>
     </article>
-    <details v-if="history.length"><summary class="cursor-pointer text-sm">{{ t('plugins.history') }}</summary>
-      <p v-for="binding in history" :key="binding.id" class="mt-2 text-xs text-ink-muted">{{ binding.designation }} · {{ formatUtc(binding.supersededAt!) }}</p>
+    <details v-if="history.length"><summary class="cursor-pointer text-body-sm">{{ t('plugins.history') }}</summary>
+      <p v-for="binding in history" :key="binding.id" class="mt-2 text-body-sm text-ink-muted">{{ binding.designation }} · {{ formatUtc(binding.supersededAt!) }}</p>
     </details>
   </section>
 </template>

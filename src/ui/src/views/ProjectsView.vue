@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, type ProjectSummary } from '@/lib/api'
 import Card from '@/components/ui/Card.vue'
+import Notice from '@/components/ui/Notice.vue'
 import Button from '@/components/ui/Button.vue'
 import DataRow from '@/components/ui/DataRow.vue'
 import ProjectForm from '@/components/ProjectForm.vue'
@@ -57,27 +58,23 @@ onMounted(async () => {
 <template>
   <div class="space-y-6">
     <div class="flex items-baseline justify-between gap-4">
-      <h1 class="text-lg font-semibold tracking-tight">{{ t('projects.title') }}</h1>
+      <h1 class="font-serif text-title">{{ t('projects.title') }}</h1>
       <Button v-if="!creating" variant="primary" @click="creating = true">
         {{ t('projects.new') }}
       </Button>
     </div>
 
-    <p v-if="message" class="rounded-md border border-verified/40 bg-verified/10 px-4 py-2 text-sm text-verified">
-      {{ message }}
-    </p>
-    <p v-if="error" class="rounded-md border border-broken/40 bg-broken/10 px-4 py-2 text-sm text-broken">
-      {{ error }}
-    </p>
+    <Notice v-if="message" tone="ledger">{{ message }}</Notice>
+    <Notice v-if="error" tone="alert">{{ error }}</Notice>
 
     <Card v-if="creating" :title="t('projects.new')">
       <ProjectForm @created="onCreated" @cancel="creating = false" />
     </Card>
 
-    <p v-if="loading" class="text-sm text-ink-muted">{{ t('common.loading') }}</p>
+    <p v-if="loading" class="text-body-sm text-ink-muted">{{ t('common.loading') }}</p>
 
     <Card v-else-if="projects.length === 0 && !creating">
-      <p class="text-sm text-ink-muted">{{ t('projects.none') }}</p>
+      <p class="text-body-sm text-ink-muted">{{ t('projects.none') }}</p>
       <div class="mt-4">
         <Button variant="primary" @click="creating = true">{{ t('projects.new') }}</Button>
       </div>
@@ -95,7 +92,7 @@ onMounted(async () => {
         <DataRow :label="t('snapshot.profile')">{{ project.captureProfile }}</DataRow>
       </dl>
       <div class="mt-4">
-        <Button variant="primary" :disabled="triggering === project.id" @click="trigger(project)">
+        <Button :disabled="triggering === project.id" @click="trigger(project)">
           {{ triggering === project.id ? t('auth.working') : t('projects.trigger') }}
         </Button>
       </div>

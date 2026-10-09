@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { ApiError } from '@/lib/api'
 import Button from '@/components/ui/Button.vue'
+import Notice from '@/components/ui/Notice.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -53,28 +54,28 @@ onMounted(auth.refresh)
 
 <template>
   <div class="mx-auto max-w-sm py-10">
-    <h1 class="text-lg font-semibold tracking-tight">
+    <h1 class="font-serif text-title">
       {{ firstRun ? t('auth.setupTitle') : t('auth.signInTitle') }}
     </h1>
-    <p class="mt-1 mb-6 text-sm text-ink-muted">
+    <p class="mt-1 mb-6 text-body-sm text-ink-muted">
       {{ firstRun ? t('auth.setupHint') : t('auth.signInHint') }}
     </p>
 
     <form class="space-y-4" @submit.prevent="submit">
       <div>
-        <label for="email" class="mb-1 block text-xs font-medium text-ink-muted">{{ t('auth.email') }}</label>
+        <label for="email" class="field-label">{{ t('auth.email') }}</label>
         <input
           id="email"
           v-model="email"
           type="email"
           required
           autocomplete="username"
-          class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 text-sm"
+          class="field-input"
         />
       </div>
 
       <div>
-        <label for="password" class="mb-1 block text-xs font-medium text-ink-muted">
+        <label for="password" class="field-label">
           {{ t('auth.password') }}
         </label>
         <input
@@ -84,20 +85,18 @@ onMounted(auth.refresh)
           required
           :minlength="12"
           :autocomplete="firstRun ? 'new-password' : 'current-password'"
-          class="w-full rounded-md border border-rule bg-paper-raised px-3 py-2 text-sm"
+          class="field-input"
         />
-        <p v-if="firstRun" class="mt-1 text-xs text-ink-muted">{{ t('auth.passwordRule') }}</p>
+        <p v-if="firstRun" class="field-hint">{{ t('auth.passwordRule') }}</p>
       </div>
 
-      <p v-if="error" class="rounded-md border border-broken/40 bg-broken/10 px-3 py-2 text-sm text-broken">
-        {{ error }}
-      </p>
+      <Notice v-if="error" tone="alert">{{ error }}</Notice>
 
       <Button type="submit" variant="primary" :disabled="busy" class="w-full justify-center">
         <span>{{ busy ? t('auth.working') : firstRun ? t('auth.createAccount') : t('auth.signIn') }}</span>
       </Button>
     </form>
 
-    <p class="mt-6 text-xs text-ink-muted">{{ t('auth.accessLogged') }}</p>
+    <p class="mt-6 text-body-sm text-ink-muted">{{ t('auth.accessLogged') }}</p>
   </div>
 </template>

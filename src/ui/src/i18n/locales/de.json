@@ -14,6 +14,7 @@
   },
   "ledger": {
     "title": "Kette",
+    "retry": "Kette erneut laden",
     "chainLength": "Einträge",
     "head": "Aktueller Hash",
     "lastCapture": "Letzte Erfassung",
@@ -43,7 +44,8 @@
     "qualified": "Qualifizierter Anbieter",
     "unqualified": "Kein qualifizierter eIDAS-Anbieter",
     "unqualifiedWarning": "Die Zeitstempel stammen von einem Demonstrationsdienst. Sie sind technisch gültig und nachprüfbar, tragen aber keine rechtliche Auseinandersetzung. Vor Erfassungen, auf die Sie sich stützen wollen, einen qualifizierten Anbieter konfigurieren.",
-    "pending": "Noch kein Zeitstempel"
+    "pending": "Noch kein Zeitstempel",
+    "anchored": "Mit Zeitstempel"
   },
   "snapshot": {
     "title": "Erfassung",
@@ -205,7 +207,9 @@
     "error": "Etwas ist schiefgelaufen",
     "yes": "Ja",
     "no": "Nein",
-    "back": "Zurück"
+    "back": "Zurück",
+    "copyHash": "Vollständigen Hash kopieren",
+    "copied": "Kopiert"
   },
   "auth": {
     "signInTitle": "Anmelden",

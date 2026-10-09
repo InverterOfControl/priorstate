@@ -13,8 +13,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "replaywebpage": "^2.5.2",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
     "pinia": "^4.0.3",
+    "replaywebpage": "^2.5.2",
     "vue": "^3.5.22",
     "vue-i18n": "^11.1.14",
     "vue-router": "^5.3.0"

@@ -37,14 +37,14 @@ onMounted(async () => {
 
 <template>
   <div class="space-y-6">
-    <h1 class="text-lg font-semibold tracking-tight">{{ t('nav.profiles') }}</h1>
+    <h1 class="font-serif text-title">{{ t('nav.profiles') }}</h1>
 
     <!--
       Profiles are read-only here on purpose. Editing capture settings in place would change what
       an already-issued protocol claims; a change creates a new version instead, and existing
       snapshots keep the version they were captured under.
     -->
-    <p v-if="loading" class="text-sm text-ink-muted">{{ t('common.loading') }}</p>
+    <p v-if="loading" class="text-body-sm text-ink-muted">{{ t('common.loading') }}</p>
 
     <Card
       v-for="profile in profiles"
@@ -52,7 +52,7 @@ onMounted(async () => {
       :title="`${profile.name} v${profile.version}`"
       :subtitle="profile.supersededAt ? `superseded ${formatUtc(profile.supersededAt)}` : undefined"
     >
-      <p class="mb-4 text-sm text-ink-muted">{{ profile.rationale }}</p>
+      <p class="mb-4 text-body-sm text-ink-muted">{{ profile.rationale }}</p>
       <dl>
         <DataRow :label="t('conditions.userAgent')" mono>{{ profile.conditions.userAgent }}</DataRow>
         <DataRow :label="t('conditions.viewport')">
