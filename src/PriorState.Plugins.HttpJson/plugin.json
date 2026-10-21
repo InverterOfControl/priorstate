@@ -1,0 +1,7 @@
+{
+  "formatVersion": 1,
+  "contractVersion": 1,
+  "id": "http-json",
+  "entryAssembly": "PriorState.Plugins.HttpJson.dll",
+  "entryType": "PriorState.Plugins.HttpJson.HttpJsonPluginModule"
+}

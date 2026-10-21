@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <ProjectReference Include="..\PriorState.Plugins.Abstractions\PriorState.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup><None Update="plugin.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><InternalsVisibleTo Include="PriorState.Plugins.S3.Tests" /></ItemGroup>
+</Project>

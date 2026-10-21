@@ -104,6 +104,18 @@ case "$FORM" in
     EXTRA_REQUIRED="plugin/binding.txt plugin/configuration.json"
     [ -n "$PAYLOAD_FILE" ] || die "This package declares no payload_file in manifest.txt."
     ;;
+  priorstate-snapshot-v3)
+    PAYLOAD_FILE="$(sed -n 's/^payload_file=//p' manifest.txt | head -n 1)"
+    PAYLOAD_HASH_FIELD="payload_sha256"
+    EXTRA_REQUIRED="plugin/binding.txt plugin/configuration.json"
+    [ -n "$PAYLOAD_FILE" ] || die "This package declares no payload_file in manifest.txt."
+    [ -n "$(canonical_field plugin_package)" ] || die "Plugin package identity is missing."
+    case "$(canonical_field plugin_package_sha256)" in
+      *[!0-9a-f]*|'') die "Invalid plugin package SHA-256." ;;
+    esac
+    PACKAGE_HASH="$(canonical_field plugin_package_sha256)"
+    [ "${#PACKAGE_HASH}" -eq 64 ] || die "Invalid plugin package SHA-256 length."
+    ;;
   *)
     die "Unknown canonical form '$FORM'. This package was written by a newer PriorState than this script."
     ;;
@@ -215,7 +227,7 @@ say ""
 # to a digest of the configuration. Recomputing both is what answers the obvious objection: that
 # the endpoint was pointed somewhere else and the result presented as this one.
 
-if [ "$FORM" = "priorstate-snapshot-v2" ]; then
+if [ "$FORM" = "priorstate-snapshot-v2" ] || [ "$FORM" = "priorstate-snapshot-v3" ]; then
   say "5. Plugin configuration"
 
   EXPECTED_BINDING="$(canonical_field binding_digest)"

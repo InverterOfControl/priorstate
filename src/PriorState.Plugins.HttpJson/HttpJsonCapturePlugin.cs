@@ -52,6 +52,15 @@ public sealed partial class HttpJsonCapturePlugin : ICapturePlugin
 
     public string DisplayName => "HTTP endpoint";
 
+    public PluginDefinition Definition => new("Archive an HTTP response without reformatting its bytes.", []);
+
+    void ICapturePlugin.ValidateConfiguration(string configurationJson, string bindingName, string? secretRef)
+    {
+        var config = ValidateConfiguration(configurationJson, bindingName);
+        if (string.IsNullOrWhiteSpace(config.AuthHeaderName) != string.IsNullOrWhiteSpace(secretRef))
+            throw new PluginException("Authentication requires both a header name and a worker secret reference.");
+    }
+
     public async Task<PluginPayload> ExecuteAsync(
         PluginExecutionContext context,
         CancellationToken cancellationToken = default)

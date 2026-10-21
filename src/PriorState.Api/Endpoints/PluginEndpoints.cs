@@ -7,7 +7,6 @@ using PriorState.Domain.Entities;
 using PriorState.Ledger;
 using PriorState.Plugins;
 using PriorState.Plugins.Abstractions;
-using PriorState.Plugins.HttpJson;
 
 namespace PriorState.Api.Endpoints;
 
@@ -22,7 +21,7 @@ public static class PluginEndpoints
         // Chromium's version out of the running container.
         group.MapGet("/", (PluginCatalogue catalogue) =>
             catalogue.All
-                .Select(p => new PluginSummary(p.Id, p.DisplayName, p.Version))
+                .Select(p => new PluginSummary(p.Id, p.DisplayName, p.Version, p.PackageSha256, p.Plugin.Definition))
                 .OrderBy(p => p.Id, StringComparer.Ordinal)
                 .ToList());
 
@@ -66,7 +65,7 @@ public static class PluginEndpoints
             AuditLog audit,
             CancellationToken ct) =>
         {
-            if (!catalogue.TryGet(request.PluginId, out _))
+            if (!catalogue.TryGet(request.PluginId, out var registered))
             {
                 var known = string.Join(", ", catalogue.All.Select(p => p.Id).Order(StringComparer.Ordinal));
                 return Results.Problem(
@@ -99,19 +98,11 @@ public static class PluginEndpoints
                     statusCode: 400);
             }
 
-            if (request.PluginId == "http-json")
+            try
             {
-                try
-                {
-                    var config = HttpJsonCapturePlugin.ValidateConfiguration(request.ConfigurationJson, request.Name);
-                    if (string.IsNullOrWhiteSpace(config.AuthHeaderName) != string.IsNullOrWhiteSpace(request.SecretRef))
-                        return Results.Problem("Authentication requires both a header name and a worker secret reference.", statusCode: 400);
-                }
-                catch (PluginException ex)
-                {
-                    return Results.Problem(ex.Message, statusCode: 400);
-                }
+                registered.Plugin.ValidateConfiguration(request.ConfigurationJson, request.Name, request.SecretRef);
             }
+            catch (PluginException ex) { return Results.Problem(ex.Message, statusCode: 400); }
             if (request.Name.Length > 120 || request.Rationale.Length > 2000 || request.ConfigurationJson.Length > 65536)
                 return Results.Problem("Name, rationale or request configuration is too long.", statusCode: 400);
 
@@ -254,7 +245,7 @@ public static class PluginEndpoints
         b.SecretRef, b.Rationale, b.Required, b.CreatedAt, b.SupersededAt);
 }
 
-public sealed record PluginSummary(string Id, string DisplayName, string Version);
+public sealed record PluginSummary(string Id, string DisplayName, string Version, string PackageSha256, PluginDefinition Definition);
 
 public sealed record PluginBindingSummary(
     Guid Id,

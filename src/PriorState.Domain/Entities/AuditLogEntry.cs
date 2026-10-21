@@ -48,4 +48,5 @@ public enum AuditAction
     PluginBindingVersionCreated = 14,
     PluginBindingRetired = 15,
     SourceTestRequested = 16,
+    PluginPackageInstallationAuthorized = 17,
 }

@@ -20,6 +20,19 @@ public sealed class PackageVerificationIntegrationTests : IClassFixture<TestTime
 
     public PackageVerificationIntegrationTests(TestTimestampAuthority tsa) => _tsa = tsa;
 
+    [Fact]
+    public async Task Version3PackageProvenanceVerifiesAndTamperingFails()
+    {
+        var package = await ExportAsync(true, packageProvenance: true);
+        var valid = await VerifyAsync(package, "--ca-file", _tsa.RootCertificate);
+        Assert.True(valid.Code == 0, valid.Output);
+        var canonicalPath = Path.Combine(package, "canonical/entry.txt");
+        var canonical = await File.ReadAllTextAsync(canonicalPath);
+        await File.WriteAllTextAsync(canonicalPath, canonical.Replace(new string('a', 64), new string('b', 64), StringComparison.Ordinal));
+        var invalid = await VerifyAsync(package, "--ca-file", _tsa.RootCertificate);
+        Assert.True(invalid.Code == 1, invalid.Output);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -108,7 +121,7 @@ public sealed class PackageVerificationIntegrationTests : IClassFixture<TestTime
     private Task<TestTimestampAuthority.CommandResult> VerifyAsync(string package, params string[] arguments) =>
         TestTimestampAuthority.RunAsync(_tsa.DirectoryPath, new[] { "sh", Path.Combine(package, "verify.sh") }.Concat(arguments).ToArray());
 
-    private async Task<string> ExportAsync(bool plugin, bool attacker = false)
+    private async Task<string> ExportAsync(bool plugin, bool attacker = false, bool packageProvenance = false)
     {
         var payload = Encoding.UTF8.GetBytes(attacker ? "attacker-controlled replacement" : "archived bytes\n");
         var conditions = new CaptureConditions
@@ -125,7 +138,7 @@ public sealed class PackageVerificationIntegrationTests : IClassFixture<TestTime
             PayloadSha256 = Sha256Hash.FromBytes(SHA256.HashData(payload)),
             PayloadObjectKey = "payload", PayloadSizeBytes = payload.Length,
             PayloadMediaType = plugin ? "application/json" : "application/wacz",
-            CanonicalFormVersion = plugin ? CanonicalSnapshotForm.Version2 : CanonicalSnapshotForm.Version1,
+            CanonicalFormVersion = plugin ? (packageProvenance ? CanonicalSnapshotForm.Version3 : CanonicalSnapshotForm.Version2) : CanonicalSnapshotForm.Version1,
             CaptureProfileVersion = new CaptureProfileVersion
             {
                 Name = "test", Version = 1, Rationale = "integration test", Conditions = conditions,
@@ -137,6 +150,11 @@ public sealed class PackageVerificationIntegrationTests : IClassFixture<TestTime
         if (plugin)
         {
             snapshot.PluginVersion = "1.0.0";
+            if (packageProvenance)
+            {
+                snapshot.PluginPackageId = "http-json";
+                snapshot.PluginPackageSha256 = new string('a', 64);
+            }
             snapshot.PluginBindingVersion = new PluginBindingVersion
             {
                 PluginId = "http-json", Name = "test", Version = 1,

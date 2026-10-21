@@ -5,6 +5,7 @@ obj/
 *.suo
 *.userprefs
 artifacts/
+.artifacts/
 [Dd]ebug/
 [Rr]elease/
 .vs/

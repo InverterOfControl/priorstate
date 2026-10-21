@@ -19,7 +19,7 @@ namespace PriorState.Ledger;
 ///     painful to reproduce in a 150-line shell script, and the script has to stay readable
 ///     enough that a court-appointed expert will actually read it.
 ///
-/// There are two versions, and which one applies is a property of the snapshot rather than of the
+/// Which version applies is a property of the snapshot rather than of the
 /// code, so that adding a v3 later cannot retroactively change what an existing entry hashes to:
 ///
 ///   v1  a page capture. The payload is a WACZ archive, and the browser conditions it ran under
@@ -29,6 +29,7 @@ namespace PriorState.Ledger;
 ///       stating one would be a false claim in the one document written to be read adversarially.
 ///       In their place it commits to which plugin ran, at which observed version, under which
 ///       configuration.
+///   v3  plugin output plus the observed package ID and package SHA-256.
 ///
 /// Encoding: UTF-8, LF line endings, one trailing newline, no BOM.
 /// Escaping: in values, backslash becomes \\, LF becomes \n, CR becomes \r. Nothing else is
@@ -41,6 +42,7 @@ public static class CanonicalSnapshotForm
 
     /// <summary>Version marker for a capture plugin's output.</summary>
     public const string Version2 = "priorstate-snapshot-v2";
+    public const string Version3 = "priorstate-snapshot-v3";
 
     /// <summary>The timestamp format. Second precision, always UTC, always Z-suffixed.</summary>
     public const string TimestampFormat = CanonicalText.TimestampFormat;
@@ -53,6 +55,7 @@ public static class CanonicalSnapshotForm
         {
             Version1 => RenderVersion1(snapshot),
             Version2 => RenderVersion2(snapshot),
+            Version3 => RenderVersion3(snapshot),
             _ => throw new InvalidOperationException(
                 $"Snapshot {snapshot.Id} names canonical form '{snapshot.CanonicalFormVersion}', which this "
                 + "build cannot render. A package exported by a newer PriorState needs a newer PriorState "
@@ -128,6 +131,19 @@ public static class CanonicalSnapshotForm
         Field(builder, "binding", binding.Designation);
         Field(builder, "binding_digest", CanonicalPluginBindingForm.ComputeDigest(binding).Value);
 
+        return CanonicalText.ToUtf8(builder);
+    }
+
+    private static byte[] RenderVersion3(Snapshot snapshot)
+    {
+        if (string.IsNullOrWhiteSpace(snapshot.PluginPackageId) || snapshot.PluginPackageSha256 is not { Length: 64 } hash
+            || hash.Any(c => !((c >= 'a' && c <= 'f') || (c >= '0' && c <= '9'))))
+            throw new InvalidOperationException("A v3 plugin snapshot needs an observed package ID and SHA-256.");
+        // Reuse v2's field ordering without changing any historic v2 bytes.
+        var previous = Encoding.UTF8.GetString(RenderVersion2(snapshot));
+        var builder = new StringBuilder(Version3).Append(previous.AsSpan(Version2.Length));
+        Field(builder, "plugin_package", snapshot.PluginPackageId);
+        Field(builder, "plugin_package_sha256", hash);
         return CanonicalText.ToUtf8(builder);
     }
 

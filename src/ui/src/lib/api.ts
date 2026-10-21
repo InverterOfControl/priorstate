@@ -71,6 +71,10 @@ export const api = {
   getText: async (path: string) => (await send(path)).text(),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, body === undefined ? { method: 'POST' } : { method: 'POST', body: JSON.stringify(body) }),
+  uploadPlugin: <T>(file: File) => request<T>('/api/plugins/packages', {
+    method: 'POST', body: file,
+    headers: { 'Content-Type': 'application/octet-stream', 'X-PriorState-Plugin-Upload': '1' },
+  }),
 }
 
 export type WormSupport = 'Unsupported' | 'ApiPresentUnverified' | 'Enforced'
@@ -102,6 +106,13 @@ export interface PluginSummary {
   id: string
   displayName: string
   version: string
+  packageSha256: string
+  definition: {
+    description: string
+    fields: Array<{ name: string; label: string; type: string; required: boolean; defaultValue: string | null; helpText: string | null }>
+    secretHelp: string
+    secretRequired: boolean
+  }
 }
 
 export interface PluginBindingSummary {

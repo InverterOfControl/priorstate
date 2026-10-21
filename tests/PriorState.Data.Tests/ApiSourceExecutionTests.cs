@@ -53,6 +53,9 @@ public sealed class ApiSourceExecutionTests(PostgresFixture postgres) : IClassFi
             Assert.Single(completed.SourceExecutions, e => e.State == SourceExecutionState.Failed);
             var apiSnapshot = Assert.Single(completed.Snapshots, s => s.PluginBindingVersionId != null);
             Assert.Equal(plugin.ReceivedAt, apiSnapshot.CapturedAtUtc);
+            Assert.Equal(CanonicalSnapshotForm.Version3, apiSnapshot.CanonicalFormVersion);
+            Assert.Equal(plugin.Id, apiSnapshot.PluginPackageId);
+            Assert.Equal(64, apiSnapshot.PluginPackageSha256!.Length);
             Assert.Equal(browserFails ? 1 : 2, completed.Snapshots.Count);
             Assert.True((await new SnapshotLedger(db).VerifyAsync()).IsIntact);
         }
@@ -123,7 +126,7 @@ public sealed class ApiSourceExecutionTests(PostgresFixture postgres) : IClassFi
     private sealed class FakePlugin : ICapturePlugin
     {
         public string Id => "http-json";
-        public string DisplayName => "Test API";
+        public string DisplayName => "Test source";
         public TaskCompletionSource BrowserStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource ResponseReceived { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public DateTimeOffset ReceivedAt { get; } = new(2026, 9, 17, 8, 0, 0, TimeSpan.Zero);

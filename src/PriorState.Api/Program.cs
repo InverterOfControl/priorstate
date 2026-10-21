@@ -9,7 +9,6 @@ using PriorState.Data;
 using PriorState.Evidence;
 using PriorState.Ledger.Timestamping;
 using PriorState.Plugins;
-using PriorState.Plugins.HttpJson;
 using PriorState.Storage;
 
 var migrateOnly = args.Contains("--migrate", StringComparer.Ordinal);
@@ -46,11 +45,10 @@ builder.Services.AddHttpClient<ITimestampAuthority, Rfc3161TimestampAuthority>()
 builder.Services.AddSingleton<IProtocolRenderer, ChromiumProtocolRenderer>();
 builder.Services.AddScoped<EvidencePackageBuilder>();
 builder.Services.AddScoped<DatabaseInitializer>();
-// The API does not execute plugins; it needs the catalogue so it can list what this build
-// contains and refuse a binding naming a plugin that is not here. Registered from the same
-// configuration as the worker so the two stay in step.
+// API loads plugin modules and validates configuration; captures execute only on the worker.
+// Both processes share immutable installed packages and report their loaded identities.
 builder.Services.AddPriorStatePlugins();
-builder.Services.AddHttpJsonCapturePlugin(builder.Configuration);
+builder.Services.AddPluginPackages(builder.Configuration, "api");
 
 builder.Services.AddScoped<AuditLog>();
 builder.Services.AddHttpContextAccessor();
@@ -142,6 +140,7 @@ app.MapProfileEndpoints();
 app.MapAuditEndpoints();
 app.MapWebhookEndpoints();
 app.MapPluginEndpoints();
+app.MapPluginPackageEndpoints();
 
 // The Vue application is built to static files and served from here, so the production compose
 // file needs no Node runtime and no second web server.

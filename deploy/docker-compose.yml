@@ -132,12 +132,15 @@ services:
       AUTHENTICATION__OIDC__CLIENTID: ${OIDC_CLIENT_ID:-}
       AUTHENTICATION__OIDC__CLIENTSECRET: ${OIDC_CLIENT_SECRET:-}
       DATAPROTECTION__KEYPATH: /var/lib/priorstate/keys
+      PLUGINS__DIRECTORY: /var/lib/priorstate/plugins
+      PLUGINS__OPERATORIDS__0: ${PLUGIN_OPERATOR_ID:-}
     volumes:
       # The API renders evidence protocols by starting a short-lived Chromium container.
       - /var/run/docker.sock:/var/run/docker.sock
       - priorstate-render:/var/lib/priorstate/render
       # Authentication cookie keys. Without this every restart signs everyone out.
       - priorstate-keys:/var/lib/priorstate/keys
+      - priorstate-plugins:/var/lib/priorstate/plugins
       - ./tsa-chain.pem:/etc/priorstate/tsa-chain.pem:ro
     networks: [priorstate]
 
@@ -181,12 +184,19 @@ services:
       PLUGINS__HTTPJSON__ALLOWEDHOSTS__1: ${PLUGIN_HTTP_ALLOWED_HOST_1:-}
       PLUGINS__HTTPJSON__ALLOWEDHOSTS__2: ${PLUGIN_HTTP_ALLOWED_HOST_2:-}
       PLUGINS__HTTPJSON__MAXPAYLOADBYTES: ${PLUGIN_MAX_PAYLOAD_BYTES:-33554432}
+      PLUGINS__DIRECTORY: /var/lib/priorstate/plugins
+      PLUGINS__S3__ALLOWEDHOSTS__0: ${PLUGIN_S3_ALLOWED_HOST:-}
+      PLUGINS__S3__ALLOWINSECUREHTTP: ${PLUGIN_S3_ALLOW_HTTP:-false}
+      PLUGINS__DNSTLS__ALLOWEDHOSTS__0: ${PLUGIN_DNS_TLS_ALLOWED_HOST:-}
+      PLUGINS__DNSTLS__ALLOWEDRESOLVERS__0: ${PLUGIN_DNS_ALLOWED_RESOLVER:-}
+      PLUGINS__GIT__ALLOWEDHOSTS__0: ${PLUGIN_GIT_ALLOWED_HOST:-}
       # Secrets a plugin binding may reference by name. The name is recorded in the ledger and the
       # evidence package; the value stays here and is never written to the database.
       PS_SECRET_ERP_TOKEN: ${PS_SECRET_ERP_TOKEN:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${CRAWL_HOST_DIRECTORY:-/var/lib/priorstate/crawls}:/var/lib/priorstate/crawls
+      - priorstate-plugins:/var/lib/priorstate/plugins
     networks: [priorstate]
 
 volumes:
@@ -194,6 +204,7 @@ volumes:
   garage-meta:
   garage-data:
   priorstate-keys:
+  priorstate-plugins:
   # Named explicitly so the API can hand the renderer a volume name the daemon will recognise,
   # independent of the compose project prefix.
   priorstate-render:

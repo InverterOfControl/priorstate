@@ -9,14 +9,22 @@
     <Project Path="src/PriorState.Plugins/PriorState.Plugins.csproj" />
     <Project Path="src/PriorState.Plugins.Abstractions/PriorState.Plugins.Abstractions.csproj" />
     <Project Path="src/PriorState.Plugins.HttpJson/PriorState.Plugins.HttpJson.csproj" />
+    <Project Path="src/PriorState.PluginPackager/PriorState.PluginPackager.csproj" />
+    <Project Path="src/PriorState.Plugins.S3/PriorState.Plugins.S3.csproj" />
+    <Project Path="src/PriorState.Plugins.DnsTls/PriorState.Plugins.DnsTls.csproj" />
+    <Project Path="src/PriorState.Plugins.Git/PriorState.Plugins.Git.csproj" />
     <Project Path="src/PriorState.Storage/PriorState.Storage.csproj" />
     <Project Path="src/PriorState.Worker/PriorState.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PriorState.Api.Tests/PriorState.Api.Tests.csproj" />
     <Project Path="tests/PriorState.Data.Tests/PriorState.Data.Tests.csproj" />
     <Project Path="tests/PriorState.Evidence.Tests/PriorState.Evidence.Tests.csproj" />
     <Project Path="tests/PriorState.Ledger.Tests/PriorState.Ledger.Tests.csproj" />
     <Project Path="tests/PriorState.Plugins.Tests/PriorState.Plugins.Tests.csproj" />
+    <Project Path="tests/PriorState.Plugins.S3.Tests/PriorState.Plugins.S3.Tests.csproj" />
+    <Project Path="tests/PriorState.Plugins.DnsTls.Tests/PriorState.Plugins.DnsTls.Tests.csproj" />
+    <Project Path="tests/PriorState.Plugins.Git.Tests/PriorState.Plugins.Git.Tests.csproj" />
     <Project Path="tests/PriorState.Storage.Tests/PriorState.Storage.Tests.csproj" />
   </Folder>
 </Solution>

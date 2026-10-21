@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { api, type PluginBindingSummary } from '@/lib/api'
+import { api, type PluginBindingSummary, type PluginSummary } from '@/lib/api'
 import { readSourceConfiguration, sourceConfigurationJson, type HttpSourceConfiguration } from '@/lib/sourceConfiguration'
 import { formatUtc } from '@/lib/format'
 import Button from '@/components/ui/Button.vue'
@@ -10,6 +10,11 @@ import Notice from '@/components/ui/Notice.vue'
 const props = defineProps<{ projectId: string }>()
 const { t } = useI18n()
 const bindings = ref<PluginBindingSummary[]>([])
+const plugins = ref<PluginSummary[]>([])
+const pluginId = ref('http-json')
+const definition = computed(() => plugins.value.find(p => p.id === pluginId.value)?.definition)
+const genericConfig = ref<Record<string, string | number | boolean>>({})
+const genericJson = ref('{}')
 const live = computed(() => bindings.value.filter(b => !b.supersededAt))
 const history = computed(() => bindings.value.filter(b => b.supersededAt))
 const editing = ref(false)
@@ -34,9 +39,25 @@ let polling = false
 let disposed = false
 
 async function load() {
-  bindings.value = await api.get<PluginBindingSummary[]>(`/api/plugin-bindings?projectId=${props.projectId}`)
+  const [sources, available] = await Promise.all([
+    api.get<PluginBindingSummary[]>(`/api/plugin-bindings?projectId=${props.projectId}`),
+    api.get<PluginSummary[]>('/api/plugins'),
+  ])
+  bindings.value = sources
+  plugins.value = available
+}
+function changePlugin() {
+  genericConfig.value = {}
+  genericJson.value = '{}'
+  for (const field of definition.value?.fields ?? []) {
+    if (field.defaultValue === null) continue
+    genericConfig.value[field.name] = field.type === 'boolean' ? field.defaultValue === 'true'
+      : field.type === 'number' ? Number(field.defaultValue) : field.defaultValue
+  }
+  secretRef.value = ''
 }
 function summary(binding: PluginBindingSummary) {
+  if (binding.pluginId !== 'http-json') return plugins.value.find(p => p.id === binding.pluginId)?.displayName ?? binding.pluginId
   try {
     const value = readSourceConfiguration(binding.configurationJson)
     return `${value.method} ${value.url}`
@@ -46,7 +67,13 @@ function begin(binding?: PluginBindingSummary) {
   error.value = ''
   message.value = ''
   try {
-    config.value = binding ? readSourceConfiguration(binding.configurationJson) : { url: '', method: 'GET' }
+    pluginId.value = binding?.pluginId ?? (plugins.value.some(p => p.id === 'http-json') ? 'http-json' : plugins.value[0]?.id ?? '')
+    changePlugin()
+    if (binding && pluginId.value !== 'http-json') {
+      genericConfig.value = JSON.parse(binding.configurationJson)
+      genericJson.value = binding.configurationJson
+    }
+    config.value = binding?.pluginId === 'http-json' ? readSourceConfiguration(binding.configurationJson) : { url: '', method: 'GET' }
     headersJson.value = JSON.stringify(config.value.headers ?? {}, null, 2)
     name.value = binding?.name ?? ''
     rationale.value = binding?.rationale ?? ''
@@ -67,10 +94,17 @@ async function save() {
     if (configured.method === 'GET') configured.body = null
     if (auth.value === 'none') { configured.authHeaderName = null; configured.authValuePrefix = null }
     if (auth.value === 'bearer') { configured.authHeaderName = 'Authorization'; configured.authValuePrefix = 'Bearer ' }
+    for (const field of definition.value?.fields ?? []) {
+      const value = genericConfig.value[field.name]
+      if (field.type === 'number' && value !== undefined && value !== '') genericConfig.value[field.name] = Number(value)
+    }
+    const sourceConfig = pluginId.value === 'http-json' ? sourceConfigurationJson(configured, headersJson.value)
+      : definition.value?.fields.length ? JSON.stringify(Object.fromEntries(Object.entries(genericConfig.value).filter(([, v]) => v !== '')))
+      : genericJson.value
     await api.post('/api/plugin-bindings', {
-      projectId: props.projectId, pluginId: 'http-json', name: name.value.trim(), rationale: rationale.value.trim(),
-      required: required.value, secretRef: auth.value === 'none' ? null : secretRef.value.trim(),
-      configurationJson: sourceConfigurationJson(configured, headersJson.value),
+      projectId: props.projectId, pluginId: pluginId.value, name: name.value.trim(), rationale: rationale.value.trim(),
+      required: required.value, secretRef: pluginId.value === 'http-json' && auth.value === 'none' ? null : secretRef.value.trim() || null,
+      configurationJson: sourceConfig,
     })
     editing.value = false
     message.value = t('sources.saved')
@@ -129,6 +163,12 @@ onUnmounted(() => { disposed = true; if (timer) clearInterval(timer) })
       <label class="block text-body-sm">{{ t('plugins.name') }}
         <input v-model="name" :readonly="existing" required maxlength="120" class="field-input mt-1" />
       </label>
+      <label class="block text-body-sm">{{ t('pluginSystem.plugin') }}
+        <select v-model="pluginId" :disabled="existing" required class="field-input mt-1" @change="changePlugin">
+          <option v-for="plugin in plugins" :key="plugin.id" :value="plugin.id">{{ plugin.displayName }}</option>
+        </select>
+      </label>
+      <template v-if="pluginId === 'http-json'">
       <label class="block text-body-sm">{{ t('sources.url') }}
         <input v-model="config.url" type="url" required placeholder="https://api.example.com/prices" class="field-input mt-1" />
       </label>
@@ -167,6 +207,25 @@ onUnmounted(() => { disposed = true; if (timer) clearInterval(timer) })
         </label>
       </details>
       <p class="text-body-sm text-ink-muted">{{ t('sources.noSecrets') }}</p>
+      </template>
+      <template v-else>
+        <p class="text-body-sm text-ink-muted">{{ definition?.description }}</p>
+        <label v-for="field in definition?.fields ?? []" :key="field.name" class="block text-body-sm">
+          {{ field.label }}
+          <input v-if="field.type === 'boolean'" v-model="genericConfig[field.name]" type="checkbox" class="ml-2" />
+          <textarea v-else-if="field.type === 'multiline'" :value="String(genericConfig[field.name] ?? '')" :required="field.required" rows="3" class="field-input mt-1" @input="genericConfig[field.name] = ($event.target as HTMLTextAreaElement).value"></textarea>
+          <input v-else v-model="genericConfig[field.name]" :type="field.type === 'number' ? 'number' : 'text'" :required="field.required" class="field-input mt-1" />
+          <span v-if="field.helpText" class="mt-1 block text-ink-muted">{{ field.helpText }}</span>
+        </label>
+        <label v-if="!definition?.fields.length" class="block text-body-sm">{{ t('pluginSystem.configuration') }}
+          <textarea v-model="genericJson" rows="6" required class="field-input hash mt-1"></textarea>
+        </label>
+        <label v-if="definition?.secretHelp || definition?.secretRequired" class="block text-body-sm">{{ t('sources.secretName') }}
+          <input v-model="secretRef" :required="definition?.secretRequired" pattern="PS_SECRET_[A-Z0-9_]+" class="field-input hash mt-1" />
+          <span class="mt-1 block text-ink-muted">{{ definition?.secretHelp }}</span>
+        </label>
+        <p class="text-body-sm text-ink-muted">{{ t('sources.noSecrets') }}</p>
+      </template>
       <label class="block text-body-sm">{{ t('plugins.rationale') }}
         <textarea v-model="rationale" required maxlength="2000" rows="2" class="field-input mt-1"></textarea>
       </label>
@@ -185,7 +244,7 @@ onUnmounted(() => { disposed = true; if (timer) clearInterval(timer) })
       </details>
       <div class="flex flex-wrap gap-2">
         <Button :disabled="busy || tests[binding.id]?.state === 'Queued' || tests[binding.id]?.state === 'Running'" @click="test(binding)">{{ t('sources.test') }}</Button>
-        <Button v-if="binding.pluginId === 'http-json'" :disabled="busy" @click="begin(binding)">{{ t('sources.edit') }}</Button>
+        <Button v-if="plugins.some(p => p.id === binding.pluginId)" :disabled="busy" @click="begin(binding)">{{ t('sources.edit') }}</Button>
         <Button :disabled="busy" @click="retire(binding)">{{ t('plugins.retire') }}</Button>
       </div>
       <p class="text-body-sm text-ink-muted">{{ t('sources.testHint') }}</p>

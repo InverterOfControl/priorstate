@@ -1,11 +1,11 @@
-# Zusätzliche API-Quellen
+# Zusätzliche Quellen
 
 Eine API-Quelle archiviert eine HTTP-Antwort neben der Website-Erfassung eines Projekts.
 So lässt sich etwa eine Shopseite zusammen mit den Preisen aus ihrer Preis-API aufzeichnen.
 
 ## Eine Quelle einrichten {#set-up-a-source}
 
-1. Öffne **Projects → dein Projekt → Additional API sources → Add API source**.
+1. Öffne **Projects → dein Projekt → Additional sources → Add source** und wähle **HTTP endpoint**.
 2. Gib einen aussagekräftigen Namen und die absolute HTTP(S)-URL der API ein.
 3. Wähle **GET** oder **POST**, wenn die API einen Request-Body zum Lesen von Daten benötigt.
 4. Wähle keine Authentifizierung, ein Bearer-Token oder einen eigenen Authentifizierungsheader.
@@ -15,7 +15,7 @@ So lässt sich etwa eine Shopseite zusammen mit den Preisen aus ihrer Preis-API 
    Antworttyp und Bytezahl.
 7. Starte **Capture now** am Projekt, um Website und API-Quellen zu archivieren.
 
-Die Navigationsseite **API sources** bietet dieselben Funktionen mit einer Projektauswahl.
+Die Navigationsseite **Sources** bietet dieselben Funktionen mit einer Projektauswahl.
 **Change settings** legt eine neue Version an. Der Quellname bezeichnet die Versionshistorie.
 Das Stilllegen einer Quelle beendet künftige Erfassungen, ohne frühere Einstellungen oder
 Nachweise zu löschen.
@@ -151,12 +151,107 @@ Docker Compose ab Version 2.24. Siehe die
 [Docker-Dokumentation zu Umgebungsdateien](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#additional-information-1).
 
 Die zugrunde liegende Schnittstelle ist weiterhin `ICapturePlugin` aus
-`PriorState.Plugins.Abstractions`. Plugins werden einkompiliert und explizit über
-`AddCapturePlugin<T>()` registriert. Sie erhalten Konfiguration und liefern Bytes zurück;
-der Host übernimmt Speicherung und Ledger-Einträge. Diese Schnittstelle ist keine Sandbox
-für nicht vertrauenswürdigen Code im Worker-Prozess.
+`PriorState.Plugins.Abstractions`. Plugins werden als `.psplugin`-Pakete installiert und beim
+Start von API und Worker geladen. Sie erhalten Konfiguration und liefern Bytes zurück;
+der Host übernimmt Speicherung und Ledger-Einträge. Eigene Ladekontexte trennen Abhängigkeiten,
+sind aber keine Sandbox für nicht vertrauenswürdigen Code.
 
 Das mitgelieferte Plugin behält seine ID `http-json`, damit bestehende Bindungen erkannt
 werden. Vorhandene Einstellungen müssen die Validierungsregeln erfüllen: GET oder POST,
 keine Zugangsdaten in der URL und Authentifizierung über eine Secret-Referenz statt statischer
 Authorization- oder Cookie-Header.
+
+## Plugin-Pakete installieren
+
+Die Seite **Zusätzliche Quellen** zeigt die geladenen Paket-Hashes und deine Betreiberidentität.
+Übernimm diese exakte Identität in `PLUGIN_OPERATOR_ID` in `deploy/.env` und erstelle den
+API-Container neu. Der Wert ist der authentifizierte NameIdentifier-Claim, keine E-Mail-Adresse.
+Ohne Freigabe ist der Upload gesperrt. Andere Installationen verwenden `Plugins:OperatorIds`.
+
+Lade ein vertrauenswürdiges `.psplugin`-Paket hoch und starte beide Prozesse neu:
+
+```bash
+docker compose restart api worker
+```
+
+Bei geänderten Umgebungsvariablen stattdessen `docker compose up -d --force-recreate api worker`
+verwenden. Compose bindet das gemeinsame Volume `priorstate-plugins` ein; außerhalb von Compose
+muss `Plugins:Directory` auf dasselbe gemeinsame Dateisystem zeigen.
+
+Der Upload prüft Manifest, Vertragsversion, Größen und sichere ZIP-Pfade, ohne Plugin-Code
+auszuführen. Erst beim Neustart werden Registrierung und Konfigurationsprüfung in der API sowie
+Erfassung im Worker verfügbar. Plugins laufen mit Anwendungsberechtigungen. Die Prüfung ist
+keine Sicherheitszertifizierung; inkompatible Assemblies können den Start verhindern.
+Es gibt weder Hot-Reload noch einen Signatur-Vertrauensspeicher.
+
+`packages/<sha256>.psplugin` enthält unveränderliche Pakete; `active.json` wählt eines je ID aus.
+Ein Paket mit vorhandener ID ist ein Update. Alte Pakete bleiben erhalten, laufende Prozesse
+behalten ihren geladenen Stand. Sichere das Volume mit. Für eine Wiederherstellung beide
+Prozesse stoppen und die vorherige Paketidentität aus einem Backup in `active.json` einsetzen.
+Die Installation wird vor Aktivierung auditiert; ein Aktivierungsfehler kann deshalb einen
+Autorisierungseintrag ohne abgeschlossene Installation hinterlassen.
+
+Die Oberfläche meldet ausstehende Neustarts, abweichende API-/Worker-Hashes und fehlende aktuelle
+Worker-Meldungen. Der Status unterstützt eine API und einen Worker je Installation.
+Neue Plugin-Snapshots verwenden `priorstate-snapshot-v3` mit tatsächlicher Paket-ID und SHA-256.
+Bestehende v1-/v2-Einträge bleiben unverändert prüfbar. Zuerst die neue Datenbankmigration ausführen.
+
+## Mitgelieferte Plugins
+
+- **HTTP endpoint** (`http-json`): bestehende GET-/POST-Konfiguration bleibt kompatibel.
+- **S3 object** (`s3`): ein Objekt je Quelle, unveränderte Bytes und optional eine feste
+  `versionId`. Endpoint, Region, Bucket und Key konfigurieren. `PLUGIN_S3_ALLOWED_HOST` freigeben;
+  HTTP erfordert zusätzlich `PLUGIN_S3_ALLOW_HTTP=true`. Das Worker-Secret enthält JSON mit
+  `accessKeyId`, `secretAccessKey` und optional `sessionToken`. Archivspeicher-Zugangsdaten
+  werden nicht wiederverwendet. Keine lokalen Dateien und keine Bucket-Auflistung.
+- **DNS and TLS** (`dns-tls`): A, AAAA, MX, TXT, NS, SOA und CAA samt TTL sowie originale
+  DNS-Nachrichten über TCP und Zertifikatsbytes als DER. `PLUGIN_DNS_TLS_ALLOWED_HOST` freigeben.
+  Ein expliziter Resolver benötigt `PLUGIN_DNS_ALLOWED_RESOLVER`; sonst wird der Worker-Resolver
+  verwendet. Ungültige Zertifikate sind Befunde. DNSSEC und Zertifikatswiderruf werden nicht
+  geprüft. Die Zertifikatskette wird vom Worker aufgebaut und kann lokale Zertifikate enthalten.
+  TLS verwendet die normale Worker-Namensauflösung unabhängig vom DNS-Beobachtungsresolver.
+- **Git repository** (`git`): HTTPS-Branch, -Tag oder -Commit wird zu einer vollständigen Commit-ID
+  aufgelöst. Reproduzierbares ZIP mit `manifest.json` und Dateistand unter `files/`.
+  `PLUGIN_GIT_ALLOWED_HOST` freigeben. Private Repositories verwenden optional ein PAT-Secret
+  und einen nicht geheimen Benutzernamen. Keine Historie, `.git`, Submodul- oder LFS-Downloads.
+  Gitlinks, LFS-Zeiger und Symlink-Texte bleiben erhalten; Links werden nicht verfolgt.
+
+Neue Plugins verweigern nicht freigegebene Zielhosts. Weitere Hosts lassen sich über indizierte
+Variablen wie `PLUGINS__GIT__ALLOWEDHOSTS__1` ergänzen. Secrets gehören ausschließlich in die
+Worker-Umgebung, etwa `deploy/secrets.env`; Quellkonfigurationen werden dauerhaft archiviert.
+Verbindungstests führen dieselben Erfassungen aus, speichern aber weder Inhalt noch Ledger-Eintrag.
+
+## Eigene Plugins paketieren
+
+`ICapturePluginModule.Register(IServiceCollection, IConfiguration)` registriert genau ein
+Singleton-`ICapturePlugin` aus der Einstiegspunkt-Assembly. `Definition` beschreibt Felder
+(`string`, `number`, `boolean`, `multiline`) und Secret-Hinweise; `ValidateConfiguration` prüft
+öffentliche Einstellungen und meldet Fehler über `PluginException`. Worker-Secrets dürfen
+bei der API-Konfigurationsprüfung nicht aufgelöst werden.
+
+Das Output-Verzeichnis enthält Assemblies, Laufzeitabhängigkeiten und `plugin.json`:
+
+```json
+{
+  "formatVersion": 1,
+  "contractVersion": 1,
+  "id": "my-source",
+  "entryAssembly": "MySource.dll",
+  "entryType": "MySource.PluginModule"
+}
+```
+
+Manifest nach Output/Publish kopieren und `CopyLocalLockFileAssemblies` aktivieren. Die stabile
+kleingeschriebene ID muss `ICapturePlugin.Id` entsprechen. Abstraktions-, Domain- und
+Microsoft.Extensions-Verträge werden mit dem Host geteilt; andere Abhängigkeiten erhalten
+einen eigenen Ladekontext. Der Host verwendet .NET 10 und Vertragsversion 1.
+
+```bash
+dotnet publish MySource.csproj -c Release -o ./plugin-output
+dotnet run --project src/PriorState.PluginPackager -- ./packages ./plugin-output
+```
+
+Der Packager erzeugt deterministische ZIPs; API-/Worker-Builds paketieren die vier mitgelieferten
+Plugins automatisch. Beobachtungsformate und Archive müssen ihre Formatversion dokumentieren
+und Originalbytes von berechneten Metadaten unterscheiden. Weitere Details stehen in der
+[englischen Betriebsanleitung](/operations/plugins#building-a-plugin-package).

@@ -28,7 +28,7 @@ public static class EvidencePackageLayout
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
-        return string.Equals(snapshot.CanonicalFormVersion, CanonicalSnapshotForm.Version2, StringComparison.Ordinal)
+        return snapshot.CanonicalFormVersion is CanonicalSnapshotForm.Version2 or CanonicalSnapshotForm.Version3
             ? PayloadNaming.FileNameFor(snapshot.PayloadMediaType)
             : PageCapturePayload;
     }

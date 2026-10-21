@@ -52,6 +52,8 @@ interface SnapshotDetail {
   payloadMediaType: string
   canonicalFormVersion: string
   pluginVersion: string | null
+  pluginPackageId: string | null
+  pluginPackageSha256: string | null
   storageWorm: 'Unsupported' | 'ApiPresentUnverified' | 'Enforced'
   timestampAnchorId: string | null
   captureProfileVersion: { designation: string } | null
@@ -222,6 +224,8 @@ onMounted(async () => {
       <dl>
         <DataRow :label="t('plugins.plugin')">{{ snapshot.pluginBindingVersion.pluginId }}</DataRow>
         <DataRow :label="t('snapshot.pluginVersion')">{{ snapshot.pluginVersion ?? '—' }}</DataRow>
+        <DataRow v-if="snapshot.pluginPackageSha256" :label="t('pluginSystem.packages')">{{ snapshot.pluginPackageId }}</DataRow>
+        <DataRow v-if="snapshot.pluginPackageSha256" :label="t('pluginSystem.packageHash')"><Hash :value="snapshot.pluginPackageSha256" full /></DataRow>
         <DataRow :label="t('plugins.configuration')">{{ snapshot.pluginBindingVersion.designation }}</DataRow>
         <DataRow :label="t('plugins.secretRef')" mono>
           {{ snapshot.pluginBindingVersion.secretRef ?? '—' }}

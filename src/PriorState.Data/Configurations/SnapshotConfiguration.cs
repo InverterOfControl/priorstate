@@ -17,6 +17,8 @@ internal sealed class SnapshotConfiguration : IEntityTypeConfiguration<Snapshot>
         builder.Property(s => s.PayloadMediaType).HasMaxLength(200).IsRequired();
         builder.Property(s => s.CanonicalFormVersion).HasMaxLength(64).IsRequired();
         builder.Property(s => s.PluginVersion).HasMaxLength(120);
+        builder.Property(s => s.PluginPackageId).HasMaxLength(64);
+        builder.Property(s => s.PluginPackageSha256).HasMaxLength(64);
         builder.Property(s => s.ExtractedText);
 
         // Contiguous and unique. A duplicate is a bug; a gap is tampering. The database refuses

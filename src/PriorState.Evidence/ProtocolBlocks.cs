@@ -20,7 +20,7 @@ internal static class ProtocolBlocks
     {
         var snapshot = request.Snapshot;
 
-        return string.Equals(snapshot.CanonicalFormVersion, CanonicalSnapshotForm.Version2, StringComparison.Ordinal)
+        return snapshot.CanonicalFormVersion is CanonicalSnapshotForm.Version2 or CanonicalSnapshotForm.Version3
             ? Plugin(request)
             : PageCapture(request);
     }
@@ -88,6 +88,8 @@ internal static class ProtocolBlocks
             Row("Erfassungsprofil des Laufs", s.CaptureProfileVersion?.Designation ?? "unbekannt"),
             Row("Zusatzmodul", binding.PluginId),
             Row("Version des Moduls", s.PluginVersion ?? "unbekannt"),
+            s.PluginPackageSha256 is null ? "" : Row("Plugin-Paket", s.PluginPackageId ?? "unbekannt"),
+            s.PluginPackageSha256 is null ? "" : Row("SHA-256 des Plugin-Pakets", s.PluginPackageSha256, hash: true),
             Row("Konfiguration", binding.Designation),
             Row("Hash der Konfiguration", CanonicalPluginBindingForm.ComputeDigest(binding).Value, hash: true),
             Row("Zugangsdaten aus", binding.SecretRef ?? "— (keine)"),
@@ -114,7 +116,7 @@ internal static class ProtocolBlocks
             ["FinalUrlLabel"] = "Tatsächlich geladen",
             ["CapturedAtLabel"] = "Erfassungszeitpunkt",
             ["ProtocolSubtitle"] =
-                "Nachweis über die von einer Schnittstelle gelieferten Daten zu einem bestimmten Zeitpunkt.",
+                "Nachweis über erfasste Quelldaten und technische Beobachtungen.",
             ["CaptureContextBlock"] = context,
             ["PayloadSummaryRow"] = Row(
                 "Nutzdaten",

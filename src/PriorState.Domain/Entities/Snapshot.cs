@@ -62,7 +62,7 @@ public sealed class Snapshot
     /// Which canonical form this entry's hash was computed over. Never changes after insert, and
     /// is not itself hashed — it selects the renderer rather than being one of its fields.
     ///
-    /// Page captures are written as v1 and stay v1 forever; plugin snapshots are written as v2.
+    /// Page captures remain v1; historic plugin snapshots remain v2, new package captures use v3.
     /// </summary>
     public required string CanonicalFormVersion { get; set; }
 
@@ -76,6 +76,10 @@ public sealed class Snapshot
     /// ran rather than from anything the plugin or the configuration declared about itself.
     /// </summary>
     public string? PluginVersion { get; set; }
+
+    /// <summary>Observed package identity and SHA-256, committed by canonical form v3.</summary>
+    public string? PluginPackageId { get; set; }
+    public string? PluginPackageSha256 { get; set; }
 
     /// <summary>Extracted page text, for full-text search and diffing. Not part of the hash input.</summary>
     public string? ExtractedText { get; set; }

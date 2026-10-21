@@ -1,0 +1,26 @@
+<Project>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'PriorState.Api' Or '$(MSBuildProjectName)' == 'PriorState.Worker'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/PriorState.PluginPackager/PriorState.PluginPackager.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/PriorState.Plugins.HttpJson/PriorState.Plugins.HttpJson.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/PriorState.Plugins.S3/PriorState.Plugins.S3.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/PriorState.Plugins.DnsTls/PriorState.Plugins.DnsTls.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/PriorState.Plugins.Git/PriorState.Plugins.Git.csproj" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+  <Target Name="PackageBundledPlugins" AfterTargets="Build"
+          Condition="('$(MSBuildProjectName)' == 'PriorState.Api' Or '$(MSBuildProjectName)' == 'PriorState.Worker') And '$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <PluginBuildRoot>$(MSBuildThisFileDirectory)src</PluginBuildRoot>
+      <PluginBuildSuffix>bin/$(Configuration)/$(TargetFramework)</PluginBuildSuffix>
+    </PropertyGroup>
+    <Exec Command="dotnet &quot;$(PluginBuildRoot)/PriorState.PluginPackager/$(PluginBuildSuffix)/PriorState.PluginPackager.dll&quot; &quot;$(TargetDir)plugins&quot; &quot;$(PluginBuildRoot)/PriorState.Plugins.HttpJson/$(PluginBuildSuffix)&quot; &quot;$(PluginBuildRoot)/PriorState.Plugins.S3/$(PluginBuildSuffix)&quot; &quot;$(PluginBuildRoot)/PriorState.Plugins.DnsTls/$(PluginBuildSuffix)&quot; &quot;$(PluginBuildRoot)/PriorState.Plugins.Git/$(PluginBuildSuffix)&quot;" />
+  </Target>
+  <Target Name="PublishBundledPlugins" AfterTargets="Publish"
+          Condition="'$(MSBuildProjectName)' == 'PriorState.Api' Or '$(MSBuildProjectName)' == 'PriorState.Worker'">
+    <ItemGroup><BundledPackage Include="$(TargetDir)plugins/*.psplugin" /></ItemGroup>
+    <Copy SourceFiles="@(BundledPackage)" DestinationFolder="$(PublishDir)plugins" />
+  </Target>
+  <Target Name="CopyPluginIntegrationFixtures" AfterTargets="Build" Condition="'$(MSBuildProjectName)' == 'PriorState.Api.Tests'">
+    <ItemGroup><PluginFixture Include="$(MSBuildThisFileDirectory)src/PriorState.Api/bin/$(Configuration)/$(TargetFramework)/plugins/*.psplugin" /></ItemGroup>
+    <Copy SourceFiles="@(PluginFixture)" DestinationFolder="$(TargetDir)plugins" />
+  </Target>
+</Project>

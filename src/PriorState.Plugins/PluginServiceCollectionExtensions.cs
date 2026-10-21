@@ -1,5 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using PriorState.Plugins.Abstractions;
 
 namespace PriorState.Plugins;
@@ -7,14 +11,34 @@ namespace PriorState.Plugins;
 /// <summary>
 /// Registration for the capture plugin system.
 ///
-/// Plugins are compiled in and registered explicitly rather than discovered from a directory at
-/// startup. Loading arbitrary assemblies into the process that owns the ledger would mean the
-/// answer to "what code produced this evidence" is no longer "the AGPL source you can read", which
-/// is the thing PriorState asks an opposing party to rely on. The contract is shaped so that an
-/// out-of-process or assembly-loading runner could be added later without changing it.
+/// Packages are installed by trusted operators and loaded at startup. Package hashes identify
+/// the executed code in new ledger entries; loading contexts isolate dependencies, not privileges.
 /// </summary>
 public static class PluginServiceCollectionExtensions
 {
+    public static IServiceCollection AddPluginPackages(this IServiceCollection services,
+        IConfiguration configuration, string host)
+    {
+        var options = new PluginPackageOptions();
+        configuration.GetSection("Plugins").Bind(options);
+        if (options.MaxUploadBytes is <= 0 or > 256L * 1024 * 1024)
+            throw new PluginPackageException("Plugins:MaxUploadBytes must be between 1 and 256 MiB.");
+        var store = new PluginPackageStore(Options.Create(options));
+        var loaded = new LoadedPluginPackages();
+        try { loaded.Load(services, configuration, store); }
+        catch
+        {
+            loaded.Dispose();
+            store.Dispose();
+            throw;
+        }
+        services.AddSingleton<PluginPackageStore>(_ => store);
+        services.AddSingleton<LoadedPluginPackages>(_ => loaded);
+        services.AddSingleton<IHostedService>(provider => new PluginRuntimeReporter(store,
+            provider.GetRequiredService<PluginCatalogue>(), provider.GetRequiredService<ILogger<PluginRuntimeReporter>>(), host));
+        return services;
+    }
+
     public static IServiceCollection AddPriorStatePlugins(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

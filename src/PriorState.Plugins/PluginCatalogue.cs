@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Security.Cryptography;
 using PriorState.Plugins.Abstractions;
 
 namespace PriorState.Plugins;
@@ -16,7 +17,7 @@ public sealed class PluginCatalogue
 {
     private readonly Dictionary<string, RegisteredPlugin> _plugins;
 
-    public PluginCatalogue(IEnumerable<ICapturePlugin> plugins)
+    public PluginCatalogue(IEnumerable<ICapturePlugin> plugins, LoadedPluginPackages? packages = null)
     {
         ArgumentNullException.ThrowIfNull(plugins);
 
@@ -24,7 +25,11 @@ public sealed class PluginCatalogue
 
         foreach (var plugin in plugins)
         {
-            var registered = new RegisteredPlugin(plugin, ObservedVersion(plugin));
+            var identity = packages?.Identities.GetValueOrDefault(plugin.Id);
+            if (packages is not null && identity is null)
+                throw new PluginPackageException($"Plugin '{plugin.Id}' does not match its package manifest ID.");
+            var hash = identity?.Sha256 ?? Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(plugin.GetType().Assembly.Location)));
+            var registered = new RegisteredPlugin(plugin, ObservedVersion(plugin), identity?.Id ?? plugin.Id, hash);
 
             if (!_plugins.TryAdd(plugin.Id, registered))
             {
@@ -33,6 +38,8 @@ public sealed class PluginCatalogue
                     + "in the canonical form of every snapshot they produce and have to be unique.");
             }
         }
+        if (packages is not null && _plugins.Count != packages.Identities.Count)
+            throw new PluginPackageException("Loaded packages and registered plugins do not match.");
     }
 
     public IReadOnlyCollection<RegisteredPlugin> All => _plugins.Values;
@@ -51,7 +58,7 @@ public sealed class PluginCatalogue
 }
 
 /// <summary>A plugin together with the version of the assembly it was loaded from.</summary>
-public sealed record RegisteredPlugin(ICapturePlugin Plugin, string Version)
+public sealed record RegisteredPlugin(ICapturePlugin Plugin, string Version, string PackageId, string PackageSha256)
 {
     public string Id => Plugin.Id;
 

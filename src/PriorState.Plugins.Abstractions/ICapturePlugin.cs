@@ -32,12 +32,19 @@ public interface ICapturePlugin
     /// <summary>Human-readable name, shown in the UI. Free to change.</summary>
     string DisplayName { get; }
 
+    /// <summary>Configuration fields used by the generic source editor.</summary>
+    PluginDefinition Definition => new("Configure this source using JSON.", []);
+
+    /// <summary>Validate public configuration, throwing PluginException on invalid input.</summary>
+    void ValidateConfiguration(string configurationJson, string bindingName, string? secretRef) { }
+
     /// <summary>
     /// Fetches the data to archive.
     ///
-    /// Return the bytes exactly as received. Reformatting, pretty-printing or re-serialising the
-    /// response would mean the archived hash covers the plugin's rendering of the data rather than
-    /// what the far end actually sent, which is the thing being attested.
+    /// Preserve source bytes exactly. A documented observation envelope or archive may contain
+    /// original protocol messages, certificates or file bytes alongside explicit observation
+    /// metadata. Such generated containers must identify their format/version and must never
+    /// claim to be a verbatim remote response.
     ///
     /// Throw to report failure. Whether that fails the whole run is the binding's decision, not
     /// the plugin's. A plugin must not return an empty or placeholder payload to signal a problem:
@@ -89,7 +96,7 @@ public sealed record PluginPayload
     /// <summary>The media type as reported by the source, e.g. "application/json".</summary>
     public required string MediaType { get; init; }
 
-    /// <summary>The bytes to archive, verbatim.</summary>
+    /// <summary>The payload to archive: original bytes or a documented observation/archive format.</summary>
     public required byte[] Content { get; init; }
 }
 

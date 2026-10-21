@@ -151,6 +151,11 @@ public sealed partial class EvidencePackageBuilder
         {
             Line(manifest, "plugin", binding.PluginId);
             Line(manifest, "plugin_version", s.PluginVersion ?? "unknown");
+            if (s.PluginPackageSha256 is not null)
+            {
+                Line(manifest, "plugin_package", s.PluginPackageId!);
+                Line(manifest, "plugin_package_sha256", s.PluginPackageSha256);
+            }
             Line(manifest, "binding", binding.Designation);
             Line(manifest, "binding_digest", CanonicalPluginBindingForm.ComputeDigest(binding).Value);
         }
@@ -187,7 +192,7 @@ public sealed partial class EvidencePackageBuilder
 
         var payloadLines = isPlugin
             ? $"""
-                 {EvidencePackageLayout.PayloadFileName(snapshot),-22}The archived response bytes, as recorded.
+                 {EvidencePackageLayout.PayloadFileName(snapshot),-22}The captured payload; see its documented source format.
                  {EvidencePackageLayout.PluginBinding,-22}The plugin configuration this ran under, as hashed.
                  {EvidencePackageLayout.PluginConfiguration,-22}That configuration in full, for reading.
                """

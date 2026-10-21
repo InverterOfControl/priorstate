@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
     <ProjectReference Include="..\PriorState.Domain\PriorState.Domain.csproj" />
   </ItemGroup>
 </Project>

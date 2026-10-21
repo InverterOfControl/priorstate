@@ -47,6 +47,7 @@ public static class PayloadNaming
             "text/plain" => ".txt",
             "text/html" => ".html",
             "application/pdf" => ".pdf",
+            "application/zip" => ".zip",
             _ => ".bin",
         };
     }

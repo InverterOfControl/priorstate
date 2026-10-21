@@ -90,7 +90,7 @@ public sealed class PluginRunner
                 RunId = execution.RunId ?? Guid.Empty, ProjectId = binding.ProjectId,
                 Profile = profile, Binding = binding, Secret = secret,
             }, cancellationToken);
-            if (payload.Content.Length == 0) throw new PluginException("The API returned an empty response.");
+            if (payload.Content.Length == 0) throw new PluginException("The source returned an empty payload.");
             var capturedAt = payload.CapturedAtUtc ?? DateTimeOffset.UtcNow;
             execution.SizeBytes = payload.Content.Length;
             execution.MediaType = payload.MediaType;
@@ -105,10 +105,11 @@ public sealed class PluginRunner
                 {
                     RunId = runId, Url = payload.Url, FinalUrl = payload.FinalUrl, CapturedAtUtc = capturedAt,
                     PayloadSha256 = stored.Sha256, PayloadObjectKey = stored.Key, PayloadSizeBytes = stored.SizeBytes,
-                    PayloadMediaType = payload.MediaType, CanonicalFormVersion = CanonicalSnapshotForm.Version2,
+                    PayloadMediaType = payload.MediaType, CanonicalFormVersion = CanonicalSnapshotForm.Version3,
                     CaptureProfileVersionId = profile.Id, CaptureProfileVersion = profile,
                     Conditions = null, PluginBindingVersionId = binding.Id, PluginBindingVersion = binding,
                     PluginVersion = registered.Version, ChainSequence = 0,
+                    PluginPackageId = registered.PackageId, PluginPackageSha256 = registered.PackageSha256,
                     PreviousHash = Sha256Hash.Genesis, EntryHash = Sha256Hash.Genesis,
                     StorageWorm = stored.Worm, WormRetainUntil = stored.RetainUntil,
                 };
@@ -134,9 +135,9 @@ public sealed class PluginRunner
             execution.FinishedAt = DateTimeOffset.UtcNow;
             var error = ex switch
             {
-                OperationCanceledException => "The API request timed out.",
+                OperationCanceledException => "The source request timed out.",
                 PluginException => ex.Message,
-                HttpRequestException => "The API could not be reached. Check its address, TLS certificate and worker network access.",
+                HttpRequestException => "The source could not be reached. Check its address, TLS certificate and worker network access.",
                 _ => "The source could not be captured. Check worker storage and database availability.",
             };
             if (!string.IsNullOrEmpty(secret)) error = error.Replace(secret, "[redacted]", StringComparison.Ordinal);

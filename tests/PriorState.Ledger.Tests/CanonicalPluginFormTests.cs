@@ -12,6 +12,23 @@ namespace PriorState.Ledger.Tests;
 public sealed class CanonicalPluginFormTests
 {
     [Fact]
+    public void Version3CommitsToActualPackageAndKeepsVersion2Unchanged()
+    {
+        var snapshot = LedgerTestData.PluginSnapshot();
+        var v2 = Encoding.UTF8.GetString(CanonicalSnapshotForm.Render(snapshot));
+        snapshot.CanonicalFormVersion = CanonicalSnapshotForm.Version3;
+        snapshot.PluginPackageId = "http-json";
+        snapshot.PluginPackageSha256 = new string('a', 64);
+        var rendered = Encoding.UTF8.GetString(CanonicalSnapshotForm.Render(snapshot));
+        Assert.Equal(v2.Replace(CanonicalSnapshotForm.Version2, CanonicalSnapshotForm.Version3, StringComparison.Ordinal)
+            + "plugin_package=http-json\nplugin_package_sha256=" + new string('a', 64) + "\n", rendered);
+        var before = CanonicalSnapshotForm.ComputeEntryHash(snapshot);
+        snapshot.PluginPackageSha256 = new string('b', 64);
+        Assert.NotEqual(before, CanonicalSnapshotForm.ComputeEntryHash(snapshot));
+        snapshot.PluginPackageSha256 = null;
+        Assert.Throws<InvalidOperationException>(() => CanonicalSnapshotForm.Render(snapshot));
+    }
+    [Fact]
     public void RenderVersion2_ProducesTheExactExpectedBytes()
     {
         var snapshot = LedgerTestData.PluginSnapshot();

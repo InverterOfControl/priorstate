@@ -1,11 +1,11 @@
-# Additional API sources
+# Additional sources
 
 An API source archives an HTTP response alongside a project's website capture. For example,
 archive a shop page together with the prices returned by its pricing API.
 
 ## Set up a source
 
-1. Open **Projects → your project → Additional API sources → Add API source**.
+1. Open **Projects → your project → Additional sources → Add source** and select **HTTP endpoint**.
 2. Enter a descriptive name and the API's absolute HTTP(S) URL.
 3. Select **GET**, or **POST** for an API that uses a request body to read data.
 4. Choose no authentication, a Bearer token, or a custom authentication header.
@@ -14,7 +14,7 @@ archive a shop page together with the prices returned by its pricing API.
    credentials and response-size limit. Success shows the response type and byte count.
 7. Use **Capture now** on the project to archive the website and its API sources.
 
-The **API sources** navigation page provides the same controls with a project selector.
+The **Sources** navigation page provides the same controls with a project selector.
 Use **Change settings** to create a new version. The source name identifies its version history;
 retiring it stops future captures without deleting earlier settings or evidence.
 
@@ -133,10 +133,112 @@ Docker Compose 2.24 or later is needed for the optional `secrets.env` file; see 
 [Docker environment-file documentation](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/#additional-information-1).
 
 The underlying plugin interface remains `ICapturePlugin` from `PriorState.Plugins.Abstractions`.
-Plugins are compiled in and registered explicitly using `AddCapturePlugin<T>()`. They receive
-configuration and return bytes; the host handles storage and ledger writes. This interface is
-not a sandbox for untrusted code running in the worker process.
+Plugins are installed as `.psplugin` ZIP packages and loaded once when API and worker start.
+They receive configuration and return bytes; the host handles storage and ledger writes.
+Assembly load contexts isolate dependencies, but are not a sandbox for untrusted code.
 
 The shipped plugin retains its stable `http-json` ID, so existing bindings remain recognised.
 Existing settings must meet the request validation rules: GET or POST, no URL credentials,
 and authentication through a secret reference rather than static Authorization/Cookie headers.
+
+## Installing packages
+
+The **Additional sources** page lists loaded package hashes and offers an upload to authorised
+operators. Copy your own identity from that page into `PLUGIN_OPERATOR_ID` in `deploy/.env`,
+then recreate the API container. The value is the exact authenticated NameIdentifier claim,
+not an email address. For non-Compose installations set `Plugins:OperatorIds` to an array of
+these identities. An empty list disables installation; ordinary users can still configure sources.
+
+Only install packages from trusted publishers. Their code runs with application permissions
+in API (registration and validation) and worker (capture). Upload validation checks the manifest,
+paths, contract version, bounded ZIP contents and SHA-256 without loading executable code.
+It cannot prove that a plugin is safe or its entry point can run; incompatible binaries fail startup.
+There is no package signature trust store or automatic restart.
+
+Upload a `.psplugin` file, then run from `deploy/`:
+
+```bash
+docker compose restart api worker
+```
+
+Changes to environment configuration require `docker compose up -d --force-recreate api worker`
+instead. Compose mounts the same `priorstate-plugins` volume in both processes. With other
+deployments configure the same shared filesystem as `Plugins:Directory` in both processes.
+The package page detects different loaded hashes, pending installations, and missing/stale worker
+reports. It assumes one API and one worker reporter for this installation.
+
+Packages live under `packages/<sha256>.psplugin`; `active.json` selects one installed package
+per plugin ID. Replacing an ID installs an update. Earlier packages remain available and running
+processes keep their original loaded code. For recovery from a package that prevents startup,
+stop both processes and restore the previous identity in `active.json` from a backup. Keep the
+package volume in your backups. Installation authorisation is audited before activation; failed
+activation can therefore leave an authorisation entry without a completed install.
+
+Run migrations before upgrading. New plugin snapshots use `priorstate-snapshot-v3`, committing
+the actual package ID and package SHA-256 alongside the observed assembly version. Existing
+v1 and v2 snapshots retain their exact canonical bytes and remain exportable/verifiable. A package
+hash identifies captured code; it does not independently prove the plugin executed as claimed.
+
+## Included source plugins
+
+- **HTTP endpoint** (`http-json`): existing GET/POST configuration and secret references remain compatible.
+- **S3 object** (`s3`): one object per binding, unchanged bytes, optional `versionId`. Configure
+  endpoint, region, bucket and key. Set `PLUGIN_S3_ALLOWED_HOST` and, only for trusted HTTP
+  endpoints, `PLUGIN_S3_ALLOW_HTTP=true`. Its worker secret is JSON containing `accessKeyId`,
+  `secretAccessKey`, and optional `sessionToken`. Archive-storage credentials are never reused.
+- **DNS and TLS** (`dns-tls`): A/AAAA/MX/TXT/NS/SOA/CAA records and TTLs, original DNS TCP
+  messages, original certificate DER, worker-built chain and TLS validation observations.
+  Set `PLUGIN_DNS_TLS_ALLOWED_HOST`; an explicit resolver additionally needs
+  `PLUGIN_DNS_ALLOWED_RESOLVER`. Without one, the worker's network-interface DNS resolver is used.
+  DNS over TCP must be reachable. DNSSEC and certificate revocation are not checked; invalid
+  certificates are recorded as observations. TLS hostname resolution uses the worker resolver
+  independently of the DNS observation resolver.
+- **Git repository** (`git`): HTTPS branch/tag/commit resolved to its full commit ID; complete
+  file tree as a reproducible ZIP with `manifest.json` and `files/`. Set `PLUGIN_GIT_ALLOWED_HOST`.
+  Private repositories use an optional PAT worker secret and a non-secret username. History,
+  `.git`, submodule downloads and LFS downloads are excluded; gitlinks and LFS pointers are
+  preserved. Symlinks are stored as their original link text and mode rather than followed.
+
+New plugins deny target hosts unless allowlisted. More hosts can be configured using indexed
+environment variables such as `PLUGINS__GIT__ALLOWEDHOSTS__1`. Secrets belong only in the worker
+environment (`deploy/secrets.env`); binding configuration is permanent evidence. S3 and Git
+default to a 32 MiB payload limit. Git also limits file count and temporary storage; the latter
+is monitored during subprocess execution and can briefly overshoot between checks.
+DNS/TLS uses a bounded 2 MiB observation envelope. HTTP and S3 timeouts default to 30 seconds,
+DNS/TLS to 30 seconds, Git to 60 seconds. Connection tests execute the same source operations
+without retaining payloads or appending the ledger.
+
+## Building a plugin package
+
+Implement `ICapturePluginModule.Register(IServiceCollection, IConfiguration)` to register exactly
+one singleton `ICapturePlugin` from the entry assembly. Supply `Definition` (public configuration
+fields and secret help) and `ValidateConfiguration`; throw `PluginException` for configuration
+errors. Configuration field types are `string`, `number`, `boolean`, and `multiline`.
+Do not resolve worker secrets in API validation.
+
+Place this manifest at the published output root:
+
+```json
+{
+  "formatVersion": 1,
+  "contractVersion": 1,
+  "id": "my-source",
+  "entryAssembly": "MySource.dll",
+  "entryType": "MySource.PluginModule"
+}
+```
+
+Copy `plugin.json` to output/publish and enable `CopyLocalLockFileAssemblies` so runtime dependencies
+are included. IDs are stable lowercase identifiers and must match `ICapturePlugin.Id`.
+The abstraction, domain and Microsoft.Extensions contracts are shared with the host; plugin-specific
+dependencies are resolved inside their own load context. Match the host's .NET 10 contract version.
+
+```bash
+dotnet publish MySource.csproj -c Release -o ./plugin-output
+dotnet run --project src/PriorState.PluginPackager -- ./packages ./plugin-output
+```
+
+The packager creates deterministic ZIPs with sorted entries and fixed timestamps. API and worker
+builds automatically package all four included plugins; neither host hardcodes their capture types.
+The source interface preserves original bytes; generated observation envelopes and archives must
+document their format/version and distinguish original bytes from computed metadata.
