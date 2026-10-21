@@ -39,7 +39,8 @@ public sealed class GitCapturePluginTests
             var commit = (await Git(root, "rev-parse", "HEAD")).Trim();
             await Git(root, "update-index", "--add", "--cacheinfo", "160000," + commit + ",submodule");
             await Git(root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "commit", "-m", "gitlink fixture");
-            await Git(root, "update-ref", "FETCH_HEAD", "HEAD");
+            // A real local fetch writes FETCH_HEAD even on Git versions that reject update-ref for pseudorefs.
+            await Git(root, "fetch", "--no-tags", "--", ".", "HEAD");
             var plugin = new GitCapturePlugin(Options.Create(new GitOptions()));
             var config = new GitConfiguration { Url = "https://example.com/repo" };
             var first = await plugin.ArchiveAsync(root, root, "unused", config, null, CancellationToken.None);

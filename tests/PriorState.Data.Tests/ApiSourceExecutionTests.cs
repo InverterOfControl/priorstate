@@ -32,7 +32,8 @@ public sealed class ApiSourceExecutionTests(PostgresFixture postgres) : IClassFi
         var project = await db.Projects.SingleAsync(p => p.Id == binding.ProjectId);
         var run = new Run { ProjectId = project.Id, CaptureProfileVersionId = project.CaptureProfileVersionId, Trigger = RunTrigger.Manual };
         db.Runs.Add(run);
-        db.CrawlJobs.Add(new CrawlJob { RunId = run.Id, MaxAttempts = 1 });
+        // This job must already be due regardless of clock skew between the host and Postgres.
+        db.CrawlJobs.Add(new CrawlJob { RunId = run.Id, MaxAttempts = 1, AvailableAt = DateTimeOffset.UnixEpoch });
         await db.SaveChangesAsync();
 
         var plugin = new FakePlugin();
