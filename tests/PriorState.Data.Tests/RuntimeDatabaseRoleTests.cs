@@ -25,6 +25,9 @@ public sealed class RuntimeDatabaseRoleTests : IClassFixture<PostgresFixture>
     }
 
     [Theory]
+    [InlineData("INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ('tampered', '10.0.0')")]
+    [InlineData("UPDATE \"__EFMigrationsHistory\" SET \"ProductVersion\" = 'tampered'")]
+    [InlineData("DELETE FROM \"__EFMigrationsHistory\"")]
     [InlineData("ALTER TABLE snapshots DISABLE TRIGGER ALL")]
     [InlineData("DROP TRIGGER snapshots_append_only ON snapshots")]
     [InlineData("DROP TABLE snapshots CASCADE")]
@@ -41,6 +44,14 @@ public sealed class RuntimeDatabaseRoleTests : IClassFixture<PostgresFixture>
         var error = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(sql));
 #pragma warning restore EF1002
         Assert.Equal(PostgresErrorCodes.InsufficientPrivilege, error.SqlState);
+    }
+
+    [Fact]
+    public async Task RuntimeCanReadMigrationStatusForHealthCheck()
+    {
+        await using var db = await RuntimeContextAsync();
+        Assert.NotEmpty(await db.Database.GetAppliedMigrationsAsync());
+        Assert.Empty(await db.Database.GetPendingMigrationsAsync());
     }
 
     [Fact]

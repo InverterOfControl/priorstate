@@ -35,6 +35,8 @@ public static class RuntimeDatabaseRole
             REVOKE CREATE ON SCHEMA public FROM PUBLIC, priorstate_app;
             GRANT USAGE ON SCHEMA public TO priorstate_app;
             REVOKE ALL ON ALL TABLES IN SCHEMA public FROM priorstate_app;
+            -- The API health check reads migration status; only the administrator may change it.
+            GRANT SELECT ON "__EFMigrationsHistory" TO priorstate_app;
             GRANT SELECT, INSERT ON snapshots, timestamp_anchors, audit_log,
                 capture_profile_versions, deployment_ledger_entries, plugin_binding_versions TO priorstate_app;
             GRANT UPDATE ("TimestampAnchorId") ON snapshots TO priorstate_app;
