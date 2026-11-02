@@ -46,6 +46,18 @@ tatsächliche Ausführung werden getrennt aufgezeichnet.
 
 ## Eine Version anlegen {#creating-a-version}
 
+In der Oberfläche **Erfassungsprofile → Neues Profil** öffnen. Name, Begründung und
+Browser-Einstellungen ausfüllen und **Profil anlegen** wählen. Ein neuer Name erzeugt Version 1
+eines eigenen Profils. Ein bestehender Name erzeugt dessen nächste Version und markiert die
+bisherige Version als abgelöst. Das Profil lässt sich beim Anlegen eines Projekts auswählen.
+Bestehende Projekte behalten ihre zugewiesene Version.
+
+Die Viewport-Abmessungen müssen zwischen 1 und 7680 Pixeln liegen. Die Wartezeit wird in
+Millisekunden angegeben, in ganzen Sekunden von 0 bis 300000. Erfassungen erfolgen ohne
+Anmeldung und ohne Werbeblocker.
+
+Das Anlegen ist auch über die API möglich:
+
 ```
 POST /api/capture-profiles
 {

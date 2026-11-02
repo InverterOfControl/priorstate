@@ -3,6 +3,29 @@
     "name": "PriorState",
     "tagline": "Revisionssichere Website-Archivierung"
   },
+  "profiles": {
+    "new": "Neues Profil",
+    "explain": "Profile legen die Browser-Einstellungen einer Erfassung fest. Gespeicherte Versionen bleiben unverändert. Bestehende Projekte behalten ihre zugewiesene Profilversion.",
+    "created": "{name} v{version} wurde angelegt. Das Profil kann beim Anlegen eines Projekts ausgewählt werden.",
+    "none": "Noch keine Erfassungsprofile vorhanden.",
+    "superseded": "Abgelöst am {time}",
+    "name": "Profilname",
+    "nameHint": "Ein neuer Name legt ein eigenes Profil an. Ein bestehender Name erzeugt dessen nächste Version.",
+    "nextVersion": "Es wird {name} v{version} angelegt. Die bisherige Version wird als abgelöst markiert.",
+    "rationale": "Begründung",
+    "rationaleHint": "Beschreiben Sie, wofür dieses Profil gedacht ist und warum diese Einstellungen gewählt wurden.",
+    "width": "Viewport-Breite (px)",
+    "height": "Viewport-Höhe (px)",
+    "settle": "Wartezeit nach Laden (ms)",
+    "settleHint": "Ganze Sekunden, von 0 bis 300.000 ms.",
+    "fixedConditions": "Erfassungen erfolgen ohne Anmeldung und ohne Werbeblocker. Chromium- und Crawler-Version werden beim tatsächlichen Lauf ermittelt.",
+    "required": "Bitte Profilname, Begründung und User-Agent ausfüllen.",
+    "create": "Profil anlegen",
+    "cookies": {
+      "LeftAsIs": "Unverändert lassen",
+      "Dismissed": "Automatisch schließen"
+    }
+  },
   "nav": {
     "projects": "Projekte",
     "timeline": "Zeitleiste",

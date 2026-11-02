@@ -79,6 +79,26 @@ export const api = {
 
 export type WormSupport = 'Unsupported' | 'ApiPresentUnverified' | 'Enforced'
 
+export interface ProfileVersion {
+  id: string
+  name: string
+  version: number
+  rationale: string
+  createdAt: string
+  supersededAt: string | null
+  conditions: {
+    userAgent: string
+    viewportWidth: number
+    viewportHeight: number
+    cookieBanner: 'LeftAsIs' | 'Dismissed'
+    javaScriptSettleMs: number
+    authenticatedSession: boolean
+    adBlockerActive: boolean
+    chromiumVersion: string
+    crawlerVersion: string
+  }
+}
+
 export interface ProjectSummary {
   id: string
   name: string

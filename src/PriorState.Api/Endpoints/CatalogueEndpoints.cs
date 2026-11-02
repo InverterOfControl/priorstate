@@ -123,16 +123,22 @@ public static class CatalogueEndpoints
             AuditLog audit,
             CancellationToken ct) =>
         {
+            if (request.Validate() is { } error)
+            {
+                return Results.Problem(error, statusCode: 400);
+            }
+
+            var name = request.Name.Trim();
             var latest = await db.CaptureProfileVersions
-                .Where(p => p.Name == request.Name)
+                .Where(p => p.Name == name)
                 .OrderByDescending(p => p.Version)
                 .FirstOrDefaultAsync(ct);
 
             var version = new CaptureProfileVersion
             {
-                Name = request.Name,
+                Name = name,
                 Version = (latest?.Version ?? 0) + 1,
-                Rationale = request.Rationale,
+                Rationale = request.Rationale.Trim(),
                 Conditions = request.Conditions,
             };
 
@@ -176,4 +182,29 @@ public sealed record ExtendRetentionRequest(int RetentionYears);
 public sealed record CreateProfileVersionRequest(
     string Name,
     string Rationale,
-    Domain.ValueObjects.CaptureConditions Conditions);
+    Domain.ValueObjects.CaptureConditions Conditions)
+{
+    public string? Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Name) || Name.Trim().Length > 120
+            || string.IsNullOrWhiteSpace(Rationale) || Rationale.Trim().Length > 2000)
+        {
+            return "Provide a profile name (up to 120 characters) and rationale (up to 2000 characters).";
+        }
+
+        if (Conditions is not { } c
+            || string.IsNullOrWhiteSpace(c.UserAgent) || c.UserAgent.Length > 512
+            || c.ViewportWidth is < 1 or > 7680 || c.ViewportHeight is < 1 or > 7680
+            || c.JavaScriptSettleMs is < 0 or > 300000 || c.JavaScriptSettleMs % 1000 != 0
+            || !Enum.IsDefined(c.CookieBanner)
+            || c.AuthenticatedSession || c.AdBlockerActive
+            || string.IsNullOrWhiteSpace(c.ChromiumVersion) || c.ChromiumVersion.Length > 64
+            || string.IsNullOrWhiteSpace(c.CrawlerVersion) || c.CrawlerVersion.Length > 64)
+        {
+            return "Provide valid browser conditions: viewport 1–7680 px, settle time 0–300000 ms in whole seconds, "
+                + "a supported cookie banner setting, and no authenticated session or ad blocker.";
+        }
+
+        return null;
+    }
+}

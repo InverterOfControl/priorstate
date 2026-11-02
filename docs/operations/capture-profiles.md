@@ -47,6 +47,16 @@ happened are stored separately on purpose.
 
 ## Creating a version
 
+In the interface, open **Capture profiles → New profile**. Enter a name, rationale and browser
+settings, then choose **Create profile**. A new name creates version 1 of a separate profile;
+an existing name creates its next version and marks the previous version as superseded.
+Select the profile when creating a project. Existing projects keep their assigned version.
+
+Viewport dimensions must be between 1 and 7680 pixels. Settle time is specified in milliseconds,
+in whole seconds from 0 to 300000. Captures remain unauthenticated and run without an ad blocker.
+
+The API also supports creation:
+
 ```
 POST /api/capture-profiles
 {

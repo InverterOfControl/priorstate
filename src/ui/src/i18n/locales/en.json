@@ -3,6 +3,29 @@
     "name": "PriorState",
     "tagline": "Tamper-evident website archiving"
   },
+  "profiles": {
+    "new": "New profile",
+    "explain": "Profiles define the browser settings for a capture. Saved versions remain unchanged. Existing projects keep their assigned profile version.",
+    "created": "{name} v{version} created. You can select this profile when creating a project.",
+    "none": "No capture profiles yet.",
+    "superseded": "Superseded at {time}",
+    "name": "Profile name",
+    "nameHint": "A new name creates a separate profile. An existing name creates its next version.",
+    "nextVersion": "This will create {name} v{version} and mark the previous version as superseded.",
+    "rationale": "Rationale",
+    "rationaleHint": "Describe what this profile is for and why these settings were chosen.",
+    "width": "Viewport width (px)",
+    "height": "Viewport height (px)",
+    "settle": "Wait after loading (ms)",
+    "settleHint": "Whole seconds, from 0 to 300,000 ms.",
+    "fixedConditions": "Captures run without signing in and without an ad blocker. Chromium and crawler versions are determined during the actual run.",
+    "required": "Please enter a profile name, rationale and user agent.",
+    "create": "Create profile",
+    "cookies": {
+      "LeftAsIs": "Leave as served",
+      "Dismissed": "Dismiss automatically"
+    }
+  },
   "nav": {
     "projects": "Projects",
     "timeline": "Timeline",
